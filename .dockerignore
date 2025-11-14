@@ -1,0 +1,8 @@
+__pycache__/
+.venv/
+.env
+app.db
+node_modules/
+frontend/dist
+app/static
+.git
