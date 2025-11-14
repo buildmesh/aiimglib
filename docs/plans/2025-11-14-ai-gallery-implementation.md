@@ -6,18 +6,18 @@
 
 **Architecture:** Single FastAPI service exposes REST APIs, serves static frontend assets, and manages SQLite persistence via SQLModel. Images live on disk under `images/`, metadata lives in `app.db`, and the frontend is a lightweight SPA hitting `/api/*` endpoints.
 
-**Tech Stack:** Python 3.11, FastAPI, SQLModel/SQLAlchemy, Uvicorn, Pydantic, HTMX/Alpine.js, Vite (optional) or vanilla JS, pytest + httpx for tests.
+**Tech Stack:** Python 3.11, FastAPI, SQLModel/SQLAlchemy, Uvicorn, Pydantic, HTMX/Alpine.js, Vite (optional) or vanilla JS, pytest + httpx for tests, uv for dependency management, Docker + Compose for runtime.
 
 ### Task 1: Project Scaffolding & Dependencies
 
 **Files:**
-- Create: `pyproject.toml`, `app/__init__.py`, `app/config.py`, `app/main.py`, `images/.gitkeep`
+- Create: `pyproject.toml`, `uv.lock`, `app/__init__.py`, `app/config.py`, `app/main.py`, `images/.gitkeep`, `Dockerfile`, `.dockerignore`, `compose.yaml`
 - Modify: `README.md`
 - Test: `tests/test_health.py`
 
-**Step 1: Initialize project metadata**
+**Step 1: Initialize project metadata with uv**
 
-Create `pyproject.toml` with FastAPI, SQLModel, uvicorn, python-multipart, aiofiles, pytest, httpx, and any frontend build deps (if bundling). Configure `[tool.pytest.ini_options]` to set `testpaths = ["tests"]`.
+Run `uv init --app .` (or manually create `pyproject.toml`) targeting Python 3.11. Add dependencies via `uv add fastapi uvicorn[standard] sqlmodel python-multipart aiofiles pydantic-settings sqlalchemy pytest httpx`. Configure `[tool.pytest.ini_options]` to set `testpaths = ["tests"]`. Run `uv lock` to produce `uv.lock`.
 
 **Step 2: Scaffold FastAPI entrypoint**
 
@@ -52,17 +52,47 @@ def test_health_endpoint():
 
 **Step 4: Run pytest to ensure health test passes**
 
-Run: `pytest tests/test_health.py -v`
+Run: `uv run pytest tests/test_health.py -v`
 Expected: PASS.
 
 **Step 5: Document setup instructions**
 
-Add to `README.md`: Python version, how to install deps (`pip install -e .[dev]` or `poetry install`), run server (`uvicorn app.main:app --reload`), run tests.
+Add to `README.md`: Python version, how to install deps via uv (`uv sync`), run server (`uv run uvicorn app.main:app --reload`), run tests.
 
-**Step 6: Commit scaffolding**
+**Step 6: Dockerize runtime**
+
+Create `Dockerfile`:
+
+```dockerfile
+FROM python:3.11-slim AS base
+WORKDIR /app
+RUN pip install --upgrade pip uv
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev
+COPY app app
+COPY images images
+CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+Add `.dockerignore` (exclude `__pycache__`, `.venv`, `app.db`, `node_modules`, `frontend/dist`, etc.) and `compose.yaml`:
+
+```yaml
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./images:/app/images
+      - ./app.db:/app/app.db
+```
+
+Document how to run `docker compose up --build`.
+
+**Step 7: Commit scaffolding**
 
 ```bash
-git add pyproject.toml app/main.py app/config.py README.md tests/test_health.py images/.gitkeep
+git add pyproject.toml uv.lock app/main.py app/config.py README.md tests/test_health.py images/.gitkeep Dockerfile .dockerignore compose.yaml
 git commit -m "chore: scaffold FastAPI project"
 ```
 
@@ -135,7 +165,7 @@ with Session(engine) as session:
 
 **Step 7: Run tests**
 
-`pytest tests/test_models.py -v`
+`uv run pytest tests/test_models.py -v`
 
 **Step 8: Commit database layer**
 
@@ -181,7 +211,7 @@ def test_create_image_saves_tags(tmp_path):
 
 **Step 4: Run pytest**
 
-`pytest tests/test_crud.py -v`
+`uv run pytest tests/test_crud.py -v`
 
 **Step 5: Commit**
 
@@ -228,7 +258,7 @@ In `app/main.py`, include routers (`app.include_router(image_router, prefix="/ap
 
 **Step 7: Run pytest suite**
 
-`pytest tests/test_images_api.py tests/test_tags_api.py -v`
+`uv run pytest tests/test_images_api.py tests/test_tags_api.py -v`
 
 **Step 8: Commit API layer**
 
@@ -270,7 +300,7 @@ def test_homepage_served(client):
 
 **Step 5: Manual verification**
 
-1. Run backend: `uvicorn app.main:app --reload`
+1. Run backend locally: `uv run uvicorn app.main:app --reload` (or start the container with `docker compose up --build`).
 2. In another terminal: `cd frontend && npm install && npm run build`
 3. Visit `http://localhost:8000/`, upload sample image, edit metadata, search by tag.
 
@@ -285,7 +315,7 @@ git commit -m "feat: add frontend gallery and bundle"
 
 **Files:**
 - Modify: `README.md`, `docs/plans/2025-11-14-ai-gallery-design.md` (update status), `docs/plans/2025-11-14-ai-gallery-implementation.md` (add execution notes if needed)
-- Test: `pytest -v`
+- Test: `uv run pytest -v`
 
 **Step 1: Document workflows**
 
@@ -293,7 +323,7 @@ Update README with sections for "Running Backend", "Building Frontend", "Uploadi
 
 **Step 2: Full test run**
 
-`pytest -v` ensuring entire suite passes.
+`uv run pytest -v` ensuring entire suite passes.
 
 **Step 3: Optional linting**
 
@@ -308,7 +338,7 @@ git commit -m "docs: add usage instructions"
 
 **Step 5: Tag ready state**
 
-Run `uvicorn app.main:app --reload`, manual walkthrough confirming upload/search/edit flows. Capture screenshots for future reference.
+Run `docker compose up --build` (or `uv run uvicorn app.main:app --reload` for hot reload), then complete a manual walkthrough confirming upload/search/edit flows. Capture screenshots for future reference.
 
 ---
 

@@ -9,6 +9,7 @@
 
 ## 2. High-Level Architecture
 - **FastAPI backend** owns REST APIs, static-file serving, and a small HTML/JS frontend bundle. Runs as one service (`uvicorn app.main:app`).
+- **Containerized runtime** packages the FastAPI app, uv-managed virtual environment, and frontend bundle inside a single Docker image so the whole stack launches via `docker compose up`.
 - **SQLite + SQLModel** persist metadata. Backend loads a SQLModel engine at startup, runs `create_all`, and exposes sessions via dependency injection.
 - **Images directory** (`images/`) remains the source of truth for binaries; FastAPI mounts it through `StaticFiles` at `/images`.
 - **Frontend** is a lightweight SPA (could be vanilla JS + HTMX/Alpine or a small Vite build) compiled into `static/` and served at `/`. It hits JSON APIs under `/api/*`.
@@ -54,10 +55,11 @@ All endpoints share standard FastAPI error handling; validation errors return 42
 - Results sorted by `captured_at DESC` by default, with optional `rating DESC` or `created_at DESC`.
 
 ## 8. Deployment & Operations
-- Local run via `uvicorn app.main:app --reload` (Poetry or pipenv). All assets live inside the repo, so distribution is copying the folder.
+- Local run via `docker compose up --build`, which builds the container (installing Python deps through `uv pip install` inside the image) and exposes FastAPI on port 8000. For quick iteration outside the container, developers can still run `uv run uvicorn app.main:app --reload`.
 - Backups: copy `app.db` and `images/` directories. Optionally expose a `/api/export` endpoint to dump JSON for external tools.
 - Logging: use FastAPI/UVicorn default logging plus structured logs around uploads to track new entries.
 - Authentication is omitted for local use; add HTTP Basic or auth proxy later if needed.
+- Dependency management standardizes on [uv](https://github.com/astral-sh/uv), so CI/CD and developers share the same locked dependency graph via `uv.lock`. Docker builds run `uv sync --frozen` for reproducibility.
 
 ## 9. Future Enhancements & Risks
 - **FTS search**: migrate prompts/notes to SQLite FTS for faster substring queries if catalog grows.
