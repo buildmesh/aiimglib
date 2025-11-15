@@ -8,6 +8,10 @@
 
 **Tech Stack:** Python 3.11, FastAPI, SQLModel/SQLAlchemy, Uvicorn, Pydantic, HTMX/Alpine.js, Vite (optional) or vanilla JS, pytest + httpx for tests, uv for dependency management, Docker + Compose for runtime.
 
+## Execution Notes (2025-11-15)
+- Tasks 1–5 have been implemented in this repository; Task 6 (docs + verification) is underway.
+- Frontend assets are built with Vite. Always edit files in `frontend/` and run `npm run build` to regenerate `app/static/`. Never modify `app/static/` by hand.
+
 ### Task 1: Project Scaffolding & Dependencies
 
 **Files:**

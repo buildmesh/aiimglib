@@ -1,5 +1,7 @@
 # AI Image Library – Design (2025-11-14)
 
+> **Status (2025-11-15):** Backend + frontend implementation through Task 5 is in place. Continue editing only the `frontend/` sources and regenerate the Vite bundle instead of touching files under `app/static/`.
+
 ## 1. Goals & Constraints
 - Provide a local-only web experience for browsing hundreds of AI-generated images with rich metadata (prompt, model, rating, date, tags).
 - Support adding new images and editing existing metadata through the browser; no manual JSON edits or file copying.
