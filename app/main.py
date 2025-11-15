@@ -1,12 +1,24 @@
 """FastAPI application entrypoint."""
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
+from sqlmodel import SQLModel
 
 from .config import settings
+from .database import engine
+from . import models  # noqa: F401 ensures models registered
 
 
-app = FastAPI(title=settings.app_name)
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """Prepare application resources on startup."""
+    SQLModel.metadata.create_all(engine)
+    yield
+
+
+app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
 
 @app.get("/healthz")
