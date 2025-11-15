@@ -7,6 +7,8 @@ const state = {
   total: 0,
 };
 
+const PROMPT_PREVIEW_LIMIT = 160;
+
 async function fetchJSON(url) {
   const response = await fetch(url);
   if (!response.ok) {
@@ -40,6 +42,16 @@ function closeModal(id) {
   document.getElementById(id).hidden = true;
 }
 
+function truncatePrompt(text) {
+  if (!text) {
+    return "";
+  }
+  if (text.length <= PROMPT_PREVIEW_LIMIT) {
+    return text;
+  }
+  return `${text.slice(0, PROMPT_PREVIEW_LIMIT)}…`;
+}
+
 function renderCards(items) {
   state.items = items;
   const gallery = document.getElementById("gallery");
@@ -48,12 +60,21 @@ function renderCards(items) {
 
   items.forEach((item) => {
     const fragment = template.content.cloneNode(true);
-    fragment.querySelector("[data-image]").src = `/images/${item.file_name}`;
-    fragment.querySelector("[data-image]").alt = item.prompt_text;
-    fragment.querySelector("[data-title]").textContent = item.ai_model || "Unknown Model";
-    fragment.querySelector("[data-prompt]").textContent = item.prompt_text;
+    const imageEl = fragment.querySelector("[data-image]");
+    imageEl.src = `/images/${item.file_name}`;
+    imageEl.alt = item.prompt_text;
+    imageEl.addEventListener("click", () => openDetailModal(item.id));
+
+    const promptEl = fragment.querySelector("[data-prompt]");
+    promptEl.textContent = truncatePrompt(item.prompt_text);
+    promptEl.title = item.prompt_text;
+
+    fragment.querySelector("[data-model]").textContent = item.ai_model
+      ? `Model: ${item.ai_model}`
+      : "Model unknown";
     renderTags(fragment.querySelector("[data-tags]"), item.tags);
     fragment.querySelector("[data-edit-button]").addEventListener("click", () => openEditModal(item.id));
+    fragment.querySelector("[data-view-button]").addEventListener("click", () => openDetailModal(item.id));
     gallery.appendChild(fragment);
   });
 }
@@ -104,6 +125,21 @@ async function populateTags() {
     option.textContent = `${tag.name} (${tag.count})`;
     select.appendChild(option);
   });
+  updateTagSummary();
+}
+
+function updateTagSummary() {
+  const select = document.getElementById("tagFilter");
+  const summary = document.getElementById("tagFilterSummary");
+  const selected = Array.from(select.selectedOptions);
+  if (!summary) {
+    return;
+  }
+  if (!selected.length) {
+    summary.textContent = "Tags";
+  } else {
+    summary.textContent = `Tags (${selected.length})`;
+  }
 }
 
 async function handleUpload(event) {
@@ -125,6 +161,7 @@ async function handleUpload(event) {
     closeModal("uploadModal");
     await populateTags();
     await refreshGallery(true);
+    updateTagSummary();
   } catch (error) {
     alert(error.message);
   }
@@ -165,9 +202,26 @@ async function handleEdit(event) {
     closeModal("editModal");
     await populateTags();
     await refreshGallery();
+    updateTagSummary();
   } catch (error) {
     alert(error.message);
   }
+}
+
+function openDetailModal(imageId) {
+  const image = state.items.find((item) => item.id === imageId);
+  if (!image) return;
+  const imageEl = document.getElementById("detailImage");
+  imageEl.src = `/images/${image.file_name}`;
+  imageEl.alt = image.prompt_text;
+  document.getElementById("detailPrompt").textContent = image.prompt_text;
+  document.getElementById("detailModel").textContent = image.ai_model || "Unknown";
+  document.getElementById("detailRating").textContent =
+    typeof image.rating === "number" ? `${image.rating}/5` : "Unrated";
+  document.getElementById("detailNotes").textContent = image.notes || "None";
+  const tagContainer = document.getElementById("detailTags");
+  renderTags(tagContainer, image.tags);
+  openModal("detailModal");
 }
 
 function wireEvents() {
@@ -196,6 +250,7 @@ function wireEvents() {
       refreshGallery();
     }
   });
+  document.getElementById("tagFilter").addEventListener("change", updateTagSummary);
 }
 
 async function bootstrap() {

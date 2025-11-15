@@ -16,7 +16,13 @@
       </header>
       <section class="filters">
         <input type="text" id="searchInput" placeholder="Search prompts, notes, or models" />
-        <select id="tagFilter" multiple aria-label="Filter by tags"></select>
+        <details class="tag-filter">
+          <summary id="tagFilterSummary">Tags</summary>
+          <div class="tag-filter__panel">
+            <select id="tagFilter" multiple size="6" aria-label="Filter by tags"></select>
+            <p class="tag-filter__hint">Hold Ctrl or ⌘ to select multiple tags.</p>
+          </div>
+        </details>
         <input type="number" id="ratingMin" placeholder="Min rating" min="0" max="5" />
         <input type="number" id="ratingMax" placeholder="Max rating" min="0" max="5" />
         <input type="date" id="dateFrom" aria-label="Date from" />
@@ -30,16 +36,17 @@
         <button id="nextPage" class="secondary" type="button">Next</button>
       </div>
       <template id="image-card-template">
-        <article class="card">
+        <article class="card" data-card>
           <img data-image src="" alt="" loading="lazy" />
           <div class="card__body">
             <div class="card__header">
-              <div>
-                <h2 data-title></h2>
-                <p data-prompt></p>
+              <h2 data-prompt></h2>
+              <div class="card__actions">
+                <button type="button" class="ghost" data-view-button>View</button>
+                <button type="button" class="secondary" data-edit-button>Edit</button>
               </div>
-              <button type="button" class="secondary" data-edit-button>Edit</button>
             </div>
+            <p class="card__model" data-model></p>
             <div data-tags class="tags"></div>
           </div>
         </article>
@@ -122,6 +129,28 @@
             <button type="submit" class="primary">Save Changes</button>
           </footer>
         </form>
+      </div>
+    </section>
+
+    <section class="modal" id="detailModal" hidden>
+      <div class="modal__content modal__content--wide">
+        <header>
+          <h2>Image Details</h2>
+          <button type="button" class="icon-button" data-close-modal="detailModal">×</button>
+        </header>
+        <div class="detail-layout">
+          <img id="detailImage" alt="" loading="lazy" />
+          <div class="detail-layout__meta">
+            <h3 id="detailPrompt"></h3>
+            <p><strong>Model:</strong> <span id="detailModel"></span></p>
+            <p><strong>Rating:</strong> <span id="detailRating"></span></p>
+            <p><strong>Notes:</strong> <span id="detailNotes"></span></p>
+            <div>
+              <strong>Tags:</strong>
+              <div id="detailTags" class="tags"></div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
     <script type="module" src="/main.js"></script>
