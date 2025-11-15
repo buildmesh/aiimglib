@@ -8,6 +8,7 @@ const state = {
 };
 
 const PROMPT_PREVIEW_LIMIT = 160;
+let capturedAtDirty = false;
 
 async function fetchJSON(url) {
   const response = await fetch(url);
@@ -36,10 +37,27 @@ function renderTags(container, tags) {
 
 function openModal(id) {
   document.getElementById(id).hidden = false;
+  document.addEventListener("keydown", handleEscape);
 }
 
 function closeModal(id) {
   document.getElementById(id).hidden = true;
+  document.removeEventListener("keydown", handleEscape);
+}
+
+function handleEscape(event) {
+  if (event.key === "Escape") {
+    let closed = false;
+    document.querySelectorAll(".modal").forEach((modal) => {
+      if (!modal.hidden) {
+        modal.hidden = true;
+        closed = true;
+      }
+    });
+    if (closed) {
+      event.preventDefault();
+    }
+  }
 }
 
 function truncatePrompt(text) {
@@ -162,6 +180,7 @@ async function handleUpload(event) {
     await populateTags();
     await refreshGallery(true);
     updateTagSummary();
+    capturedAtDirty = false;
   } catch (error) {
     alert(error.message);
   }
@@ -226,6 +245,7 @@ function openDetailModal(imageId) {
 
 function wireEvents() {
   document.getElementById("refreshButton").addEventListener("click", () => refreshGallery(true));
+  document.getElementById("clearFiltersButton").addEventListener("click", clearFilters);
   document.getElementById("searchInput").addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       refreshGallery(true);
@@ -251,6 +271,25 @@ function wireEvents() {
     }
   });
   document.getElementById("tagFilter").addEventListener("change", updateTagSummary);
+  const fileInput = document.querySelector('input[name="image_file"]');
+  const capturedInput = document.querySelector('input[name="captured_at"]');
+  if (capturedInput) {
+    capturedInput.addEventListener("input", () => {
+      capturedAtDirty = true;
+    });
+  }
+  if (fileInput && capturedInput) {
+    fileInput.addEventListener("change", () => {
+      if (capturedAtDirty) {
+        return;
+      }
+      const fileName = fileInput.files?.[0]?.name;
+      const guessed = extractDateFromFilename(fileName);
+      if (guessed) {
+        capturedInput.value = guessed;
+      }
+    });
+  }
 }
 
 async function bootstrap() {
@@ -263,3 +302,48 @@ bootstrap().catch((error) => {
   const gallery = document.getElementById("gallery");
   gallery.innerHTML = `<p class="error">Failed to load gallery: ${error.message}</p>`;
 });
+
+function clearFilters() {
+  document.getElementById("searchInput").value = "";
+  document.getElementById("ratingMin").value = "";
+  document.getElementById("ratingMax").value = "";
+  document.getElementById("dateFrom").value = "";
+  document.getElementById("dateTo").value = "";
+  const tagSelect = document.getElementById("tagFilter");
+  Array.from(tagSelect.options).forEach((option) => {
+    option.selected = false;
+  });
+  updateTagSummary();
+  refreshGallery(true);
+}
+
+function extractDateFromFilename(filename = "") {
+  if (!filename) return null;
+  const base = filename.split(".")[0];
+  const isoMatch = base.match(
+    /(\d{4})[-_]?(\d{2})[-_]?(\d{2})(?:[-_]?(\d{2})[-_]?(\d{2})[-_]?(\d{2}))?/
+  );
+  if (isoMatch) {
+    const [, year, month, day, hour = "00", minute = "00", second = "00"] = isoMatch;
+    const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second)));
+    return formatDateForInput(date);
+  }
+  const unixMatch = base.match(/(\d{10,})/);
+  if (unixMatch) {
+    const raw = unixMatch[1];
+    const timestamp = raw.length > 10 ? Number(raw) : Number(raw) * 1000;
+    if (!Number.isNaN(timestamp)) {
+      const date = new Date(timestamp);
+      return formatDateForInput(date);
+    }
+  }
+  return null;
+}
+
+function formatDateForInput(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return null;
+  }
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
