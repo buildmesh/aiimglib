@@ -277,7 +277,7 @@ git commit -m "feat: add REST API and upload handling"
 
 **Step 1: Initialize frontend**
 
-Use Vite (vanilla) in `frontend/`. `package.json` scripts: `dev`, `build`, `preview`. Install HTMX/Alpine as dependencies. Configure `vite.config.js` to output to `../app/static`.
+Use Vite (vanilla) in `frontend/`. `package.json` scripts: `dev`, `build`, `preview`. Install HTMX/Alpine as dependencies. Configure `vite.config.js` to output to `../app/static`. **Important:** treat `frontend/` as the only editable source; never change files under `app/static/` directly. Always run `npm run build` after edits to regenerate the bundled assets.
 
 **Step 2: Implement gallery markup**
 

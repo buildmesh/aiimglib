@@ -41,6 +41,7 @@ All endpoints share standard FastAPI error handling; validation errors return 42
 - Tiles support click-to-open modal displaying full-size image plus metadata form (fields editable inline). Save button triggers `PUT /api/images/{id}`; optimistic UI updates list.
 - Floating “Add Image” button opens modal with upload form: file picker, prompt (textarea or JSON-aware editor), AI model dropdown/text, notes, rating slider, date picker, tags multi-select allowing creation of new tags. On submit, send multipart to `POST /api/images` and refresh gallery.
 - Pagination/infinite scroll fetches additional pages via `GET /api/images?page=n` to avoid loading everything at once.
+- Source-of-truth frontend code lives under `frontend/`; the production bundle is generated into `app/static/` via `npm run build`. Built assets must never be edited manually—always change `frontend/` files and regenerate the bundle.
 
 ## 6. Upload & Edit Workflow Safety
 1. User selects image + enters metadata.
