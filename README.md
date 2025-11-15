@@ -27,9 +27,16 @@ uv run uvicorn app.main:app --reload
 ```
 
 ### Docker Compose
+Ensure the bind-mount directories exist on the host:
+```bash
+mkdir -p images data
+```
+
+Build and run:
 ```bash
 docker compose up --build
 ```
+The container stores uploads in `./images` and the SQLite database at `./data/app.db`.
 
 ### Legacy metadata import
 If you have an older JSON export (see `docs/reference/legacy-json-format.md`), place the JSON file and its referenced images in the same directory, then run:

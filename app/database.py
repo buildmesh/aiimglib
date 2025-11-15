@@ -4,10 +4,20 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import Iterator
 
+from pathlib import Path
+
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import Session, create_engine
 
 from .config import settings
+
+def _prepare_database_path(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not path.exists():
+        path.touch()
+
+
+_prepare_database_path(settings.database_path)
 
 engine = create_engine(
     settings.database_url,

@@ -3,6 +3,8 @@ services:
     build: .
     ports:
       - "8000:8000"
+    environment:
+      DATABASE_PATH: /app/data/app.db
     volumes:
       - ./images:/app/images
-      - ./app.db:/app/app.db
+      - ./data:/app/data
