@@ -70,6 +70,18 @@ def _tags_from_query(raw: str | None) -> List[str]:
     return [part.strip() for part in raw.split(",") if part.strip()]
 
 
+def _store_upload_or_400(upload: UploadFile) -> str:
+    if not files.is_allowed_upload(upload):
+        raise HTTPException(
+            status_code=400,
+            detail="Only PNG, JPG, and WEBP images are allowed.",
+        )
+    try:
+        return files.save_upload(upload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.get("/", response_model=schemas.ImageListResponse)
 def list_images(
     pagination: PaginationParams = Depends(pagination_params),
@@ -119,7 +131,7 @@ def create_image_endpoint(
     prompt_meta: str | None = Form(None),
     session: Session = Depends(db_session),
 ) -> schemas.ImageRead:
-    saved_file = files.save_upload(image_file)
+    saved_file = _store_upload_or_400(image_file)
     try:
         payload = schemas.ImageCreate(
             file_name=saved_file,
@@ -156,7 +168,7 @@ def replace_image_file(
 ) -> schemas.ImageRead:
     image = crud.get_image(session, image_id)
     old_file = image.file_name
-    new_file = files.save_upload(image_file)
+    new_file = _store_upload_or_400(image_file)
     try:
         image.file_name = new_file
         image.updated_at = datetime.utcnow()

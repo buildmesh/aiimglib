@@ -1,6 +1,7 @@
 __pycache__/
 .venv/
 .pytest_cache/
+node_modules/
 app.db
 *.sqlite3
 .env

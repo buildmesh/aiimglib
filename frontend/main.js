@@ -2,6 +2,9 @@ import "./styles.css";
 
 const state = {
   items: [],
+  page: 1,
+  pageSize: 20,
+  total: 0,
 };
 
 async function fetchJSON(url) {
@@ -55,7 +58,18 @@ function renderCards(items) {
   });
 }
 
-async function refreshGallery() {
+function renderPagination() {
+  const indicator = document.getElementById("pageIndicator");
+  const totalPages = Math.max(1, Math.ceil(state.total / state.pageSize));
+  indicator.textContent = `Page ${state.page} / ${totalPages}`;
+  document.getElementById("prevPage").disabled = state.page <= 1;
+  document.getElementById("nextPage").disabled = state.page >= totalPages;
+}
+
+async function refreshGallery(resetPage = false) {
+  if (resetPage) {
+    state.page = 1;
+  }
   const params = new URLSearchParams();
   const query = document.getElementById("searchInput").value.trim();
   const tags = Array.from(document.getElementById("tagFilter").selectedOptions).map((option) => option.value);
@@ -71,8 +85,13 @@ async function refreshGallery() {
   if (dateFrom) params.set("date_from", dateFrom);
   if (dateTo) params.set("date_to", dateTo);
 
-  const { items } = await fetchJSON(`/api/images?${params.toString()}`);
+  params.set("page", String(state.page));
+  params.set("page_size", String(state.pageSize));
+
+  const { items, total } = await fetchJSON(`/api/images?${params.toString()}`);
+  state.total = total;
   renderCards(items);
+  renderPagination();
 }
 
 async function populateTags() {
@@ -105,7 +124,7 @@ async function handleUpload(event) {
     form.reset();
     closeModal("uploadModal");
     await populateTags();
-    await refreshGallery();
+    await refreshGallery(true);
   } catch (error) {
     alert(error.message);
   }
@@ -152,10 +171,10 @@ async function handleEdit(event) {
 }
 
 function wireEvents() {
-  document.getElementById("refreshButton").addEventListener("click", refreshGallery);
+  document.getElementById("refreshButton").addEventListener("click", () => refreshGallery(true));
   document.getElementById("searchInput").addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
-      refreshGallery();
+      refreshGallery(true);
     }
   });
   document.getElementById("addImageButton").addEventListener("click", () => openModal("uploadModal"));
@@ -164,6 +183,19 @@ function wireEvents() {
   });
   document.getElementById("uploadForm").addEventListener("submit", handleUpload);
   document.getElementById("editForm").addEventListener("submit", handleEdit);
+  document.getElementById("prevPage").addEventListener("click", () => {
+    if (state.page > 1) {
+      state.page -= 1;
+      refreshGallery();
+    }
+  });
+  document.getElementById("nextPage").addEventListener("click", () => {
+    const totalPages = Math.max(1, Math.ceil(state.total / state.pageSize));
+    if (state.page < totalPages) {
+      state.page += 1;
+      refreshGallery();
+    }
+  });
 }
 
 async function bootstrap() {

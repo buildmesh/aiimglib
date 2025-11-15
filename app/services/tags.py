@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Iterable, List
 
 from sqlalchemy import select
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlmodel import Session
 
 from app import models
@@ -27,14 +28,12 @@ def ensure_tags(session: Session, names: Iterable[str]) -> List[models.Tag]:
 
     tags: List[models.Tag] = []
     for tag_name in unique:
-        existing = session.exec(
+        stmt = sqlite_insert(models.Tag).values(name=tag_name).prefix_with("OR IGNORE")
+        session.exec(stmt)
+        tag = session.exec(
             select(models.Tag).where(models.Tag.name == tag_name)
-        ).first()
-        if existing:
-            tags.append(existing if isinstance(existing, models.Tag) else existing[0])
+        ).scalars().first()
+        if tag is None:
             continue
-        tag = models.Tag(name=tag_name)
-        session.add(tag)
-        session.flush()
         tags.append(tag)
     return tags

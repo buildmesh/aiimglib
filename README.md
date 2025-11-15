@@ -32,11 +32,11 @@ docker compose up --build
 ```
 
 ### Legacy metadata import
-If you have an older JSON export (see `docs/reference/legacy-json-format.md`), import it after running migrations:
+If you have an older JSON export (see `docs/reference/legacy-json-format.md`), place the JSON file and its referenced images in the same directory, then run:
 ```bash
 uv run python scripts/import_legacy_json.py path/to/legacy.json
 ```
-Use `--dry-run` to validate the data without writing to SQLite.
+Use `--dry-run` to validate paths without writing to SQLite. The importer copies each referenced image into `images/` and creates matching database rows—no manual file copying required.
 
 ## Using the App
 - Visit `http://localhost:8000/` to open the gallery UI.

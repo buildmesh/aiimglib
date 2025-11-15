@@ -4,7 +4,6 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>AI Image Gallery</title>
-    <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
     <div id="app" class="app">
@@ -25,6 +24,11 @@
         <button id="refreshButton">Apply Filters</button>
       </section>
       <main id="gallery" class="gallery"></main>
+      <div class="pagination">
+        <button id="prevPage" class="secondary" type="button">Previous</button>
+        <span id="pageIndicator">Page 1</span>
+        <button id="nextPage" class="secondary" type="button">Next</button>
+      </div>
       <template id="image-card-template">
         <article class="card">
           <img data-image src="" alt="" loading="lazy" />

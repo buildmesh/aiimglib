@@ -3,14 +3,18 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
+import logging
 from datetime import datetime
-from typing import Iterable, List, Tuple, Union
+from pathlib import Path
+from typing import List, Tuple, Union
 
-from sqlmodel import SQLModel, select
+from sqlmodel import SQLModel
 
 from app import models
 from app.database import engine, session_scope
+from app.services import files, tags as tag_service
+
+logger = logging.getLogger(__name__)
 
 
 def parse_args() -> argparse.Namespace:
@@ -34,20 +38,6 @@ def load_entries(path: Path) -> list[dict]:
         msg = "'image' must contain a list of entries."
         raise ValueError(msg)
     return entries
-
-
-def ensure_tags(session, names: Iterable[str]) -> List[models.Tag]:
-    tags: List[models.Tag] = []
-    for name in {n.strip().lower() for n in names if n.strip()}:
-        existing = session.exec(select(models.Tag).where(models.Tag.name == name)).first()
-        if existing:
-            tags.append(existing)
-        else:
-            tag = models.Tag(name=name)
-            session.add(tag)
-            session.flush()
-            tags.append(tag)
-    return tags
 
 
 PromptMeta = Union[dict, list, str, None]
@@ -76,8 +66,9 @@ def normalize_prompt(prompt) -> Tuple[str, PromptMeta]:
 def convert_entry(entry: dict) -> dict:
     prompt_text, prompt_meta = normalize_prompt(entry.get("prompt"))
     tags = sorted({tag.strip().lower() for tag in entry.get("tags", []) if tag.strip()})
+    sanitized_name = files.sanitize_storage_name(entry["file"])
     return {
-        "file_name": entry["file"],
+        "file_name": sanitized_name,
         "prompt_text": prompt_text,
         "prompt_meta": prompt_meta,
         "ai_model": entry.get("ai_model"),
@@ -88,11 +79,33 @@ def convert_entry(entry: dict) -> dict:
     }
 
 
-def import_entries(entries: list[dict], dry_run: bool = False) -> None:
+def _resolve_source_file(base_dir: Path, relative_name: str) -> Path:
+    candidate = (base_dir / relative_name).resolve()
+    base_dir_resolved = base_dir.resolve()
+    try:
+        candidate.relative_to(base_dir_resolved)
+    except ValueError as exc:
+        raise ValueError(f"Legacy image path {relative_name} escapes base directory") from exc
+    if not candidate.is_file():
+        raise FileNotFoundError(f"Legacy image {relative_name} not found in {base_dir_resolved}")
+    return candidate
+
+
+def import_entries(entries: list[dict], source_dir: Path, dry_run: bool = False) -> None:
     with session_scope() as session:
         for entry in entries:
             converted = convert_entry(entry)
-            tag_instances = ensure_tags(session, converted.pop("tags"))
+            try:
+                source_file = _resolve_source_file(source_dir, entry["file"])
+            except (FileNotFoundError, ValueError) as exc:
+                logger.error("Skipping %s: %s", entry.get("file"), exc)
+                raise
+
+            if not dry_run:
+                copied_name = files.copy_into_images(source_file, converted["file_name"])
+                converted["file_name"] = copied_name
+
+            tag_instances = tag_service.ensure_tags(session, converted.pop("tags"))
             image = models.Image(**converted, tags=tag_instances)
             session.add(image)
         if dry_run:
@@ -105,7 +118,7 @@ def main() -> None:
     args = parse_args()
     entries = load_entries(args.json_path)
     SQLModel.metadata.create_all(engine)
-    import_entries(entries, dry_run=args.dry_run)
+    import_entries(entries, source_dir=args.json_path.parent, dry_run=args.dry_run)
 
 
 if __name__ == "__main__":
