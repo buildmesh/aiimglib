@@ -8,4 +8,4 @@ def test_homepage_served(api_client):
     assert response.status_code == 200
     body = response.text.lower()
     assert "ai image" in body
-    assert "/api/images" in body
+    assert "add image" in body

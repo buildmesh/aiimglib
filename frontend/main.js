@@ -1,11 +1,22 @@
 import "./styles.css";
 
+const state = {
+  items: [],
+};
+
 async function fetchJSON(url) {
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Request failed: ${response.status}`);
   }
   return response.json();
+}
+
+function serializeTagsInput(value) {
+  return value
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
 }
 
 function renderTags(container, tags) {
@@ -18,7 +29,16 @@ function renderTags(container, tags) {
   });
 }
 
+function openModal(id) {
+  document.getElementById(id).hidden = false;
+}
+
+function closeModal(id) {
+  document.getElementById(id).hidden = true;
+}
+
 function renderCards(items) {
+  state.items = items;
   const gallery = document.getElementById("gallery");
   gallery.innerHTML = "";
   const template = document.getElementById("image-card-template");
@@ -26,21 +46,30 @@ function renderCards(items) {
   items.forEach((item) => {
     const fragment = template.content.cloneNode(true);
     fragment.querySelector("[data-image]").src = `/images/${item.file_name}`;
+    fragment.querySelector("[data-image]").alt = item.prompt_text;
     fragment.querySelector("[data-title]").textContent = item.ai_model || "Unknown Model";
     fragment.querySelector("[data-prompt]").textContent = item.prompt_text;
     renderTags(fragment.querySelector("[data-tags]"), item.tags);
+    fragment.querySelector("[data-edit-button]").addEventListener("click", () => openEditModal(item.id));
     gallery.appendChild(fragment);
   });
 }
 
 async function refreshGallery() {
-  const query = document.getElementById("searchInput").value.trim();
-  const tagSelect = document.getElementById("tagFilter");
-  const selectedTags = Array.from(tagSelect.selectedOptions).map((option) => option.value);
-
   const params = new URLSearchParams();
+  const query = document.getElementById("searchInput").value.trim();
+  const tags = Array.from(document.getElementById("tagFilter").selectedOptions).map((option) => option.value);
+  const ratingMin = document.getElementById("ratingMin").value;
+  const ratingMax = document.getElementById("ratingMax").value;
+  const dateFrom = document.getElementById("dateFrom").value;
+  const dateTo = document.getElementById("dateTo").value;
+
   if (query) params.set("q", query);
-  if (selectedTags.length) params.set("tags", selectedTags.join(","));
+  if (tags.length) params.set("tags", tags.join(","));
+  if (ratingMin) params.set("rating_min", ratingMin);
+  if (ratingMax) params.set("rating_max", ratingMax);
+  if (dateFrom) params.set("date_from", dateFrom);
+  if (dateTo) params.set("date_to", dateTo);
 
   const { items } = await fetchJSON(`/api/images?${params.toString()}`);
   renderCards(items);
@@ -58,6 +87,68 @@ async function populateTags() {
   });
 }
 
+async function handleUpload(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const formData = new FormData(form);
+  const tags = serializeTagsInput(formData.get("tags") || "");
+  formData.set("tags", JSON.stringify(tags));
+
+  try {
+    const response = await fetch("/api/images", {
+      method: "POST",
+      body: formData,
+    });
+    if (!response.ok) {
+      throw new Error("Upload failed");
+    }
+    form.reset();
+    closeModal("uploadModal");
+    await refreshGallery();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+function openEditModal(imageId) {
+  const image = state.items.find((item) => item.id === imageId);
+  if (!image) return;
+  document.getElementById("editImageId").value = image.id;
+  document.getElementById("editPrompt").value = image.prompt_text;
+  document.getElementById("editTags").value = image.tags.map((tag) => tag.name).join(", ");
+  document.getElementById("editModel").value = image.ai_model || "";
+  document.getElementById("editNotes").value = image.notes || "";
+  document.getElementById("editRating").value = image.rating ?? "";
+  openModal("editModal");
+}
+
+async function handleEdit(event) {
+  event.preventDefault();
+  const id = document.getElementById("editImageId").value;
+  const payload = {
+    prompt_text: document.getElementById("editPrompt").value,
+    tags: serializeTagsInput(document.getElementById("editTags").value),
+    ai_model: document.getElementById("editModel").value || null,
+    notes: document.getElementById("editNotes").value || null,
+    rating: document.getElementById("editRating").value ? Number(document.getElementById("editRating").value) : null,
+  };
+
+  try {
+    const response = await fetch(`/api/images/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      throw new Error("Update failed");
+    }
+    closeModal("editModal");
+    await refreshGallery();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
 function wireEvents() {
   document.getElementById("refreshButton").addEventListener("click", refreshGallery);
   document.getElementById("searchInput").addEventListener("keydown", (event) => {
@@ -65,6 +156,12 @@ function wireEvents() {
       refreshGallery();
     }
   });
+  document.getElementById("addImageButton").addEventListener("click", () => openModal("uploadModal"));
+  document.querySelectorAll("[data-close-modal]").forEach((button) => {
+    button.addEventListener("click", (event) => closeModal(event.currentTarget.dataset.closeModal));
+  });
+  document.getElementById("uploadForm").addEventListener("submit", handleUpload);
+  document.getElementById("editForm").addEventListener("submit", handleEdit);
 }
 
 async function bootstrap() {

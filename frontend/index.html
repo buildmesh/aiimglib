@@ -9,25 +9,117 @@
   <body>
     <div id="app" class="app">
       <header class="app__header">
-        <h1>AI Image Library</h1>
-        <div class="filters">
-          <input type="text" id="searchInput" placeholder="Search prompts or notes" />
-          <select id="tagFilter" multiple></select>
-          <button id="refreshButton">Refresh</button>
+        <div>
+          <h1>AI Image Library</h1>
+          <p>Browse, upload, and edit your AI-generated artwork.</p>
         </div>
+        <button id="addImageButton" class="primary">Add Image</button>
       </header>
+      <section class="filters">
+        <input type="text" id="searchInput" placeholder="Search prompts, notes, or models" />
+        <select id="tagFilter" multiple aria-label="Filter by tags"></select>
+        <input type="number" id="ratingMin" placeholder="Min rating" min="0" max="5" />
+        <input type="number" id="ratingMax" placeholder="Max rating" min="0" max="5" />
+        <input type="date" id="dateFrom" aria-label="Date from" />
+        <input type="date" id="dateTo" aria-label="Date to" />
+        <button id="refreshButton">Apply Filters</button>
+      </section>
       <main id="gallery" class="gallery"></main>
       <template id="image-card-template">
         <article class="card">
           <img data-image src="" alt="" loading="lazy" />
           <div class="card__body">
-            <h2 data-title></h2>
-            <p data-prompt></p>
+            <div class="card__header">
+              <div>
+                <h2 data-title></h2>
+                <p data-prompt></p>
+              </div>
+              <button type="button" class="secondary" data-edit-button>Edit</button>
+            </div>
             <div data-tags class="tags"></div>
           </div>
         </article>
       </template>
     </div>
+
+    <section class="modal" id="uploadModal" hidden>
+      <div class="modal__content">
+        <header>
+          <h2>Add New Image</h2>
+          <button type="button" class="icon-button" data-close-modal="uploadModal">×</button>
+        </header>
+        <form id="uploadForm">
+          <label>
+            Image File
+            <input type="file" name="image_file" accept="image/*" required />
+          </label>
+          <label>
+            Prompt
+            <textarea name="prompt_text" required></textarea>
+          </label>
+          <label>
+            Tags (comma separated)
+            <input type="text" name="tags" placeholder="space, sci-fi" />
+          </label>
+          <label>
+            AI Model
+            <input type="text" name="ai_model" placeholder="Model name" />
+          </label>
+          <label>
+            Notes
+            <textarea name="notes" placeholder="Optional notes"></textarea>
+          </label>
+          <label>
+            Rating (0-5)
+            <input type="number" name="rating" min="0" max="5" />
+          </label>
+          <label>
+            Captured At
+            <input type="datetime-local" name="captured_at" />
+          </label>
+          <footer>
+            <button type="button" class="secondary" data-close-modal="uploadModal">Cancel</button>
+            <button type="submit" class="primary">Upload</button>
+          </footer>
+        </form>
+      </div>
+    </section>
+
+    <section class="modal" id="editModal" hidden>
+      <div class="modal__content">
+        <header>
+          <h2>Edit Image</h2>
+          <button type="button" class="icon-button" data-close-modal="editModal">×</button>
+        </header>
+        <form id="editForm">
+          <input type="hidden" id="editImageId" />
+          <label>
+            Prompt
+            <textarea id="editPrompt" required></textarea>
+          </label>
+          <label>
+            Tags (comma separated)
+            <input type="text" id="editTags" />
+          </label>
+          <label>
+            AI Model
+            <input type="text" id="editModel" />
+          </label>
+          <label>
+            Notes
+            <textarea id="editNotes"></textarea>
+          </label>
+          <label>
+            Rating (0-5)
+            <input type="number" id="editRating" min="0" max="5" />
+          </label>
+          <footer>
+            <button type="button" class="secondary" data-close-modal="editModal">Cancel</button>
+            <button type="submit" class="primary">Save Changes</button>
+          </footer>
+        </form>
+      </div>
+    </section>
     <script type="module" src="/main.js"></script>
   </body>
 </html>
