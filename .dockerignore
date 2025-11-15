@@ -4,6 +4,5 @@ __pycache__/
 app.db
 node_modules/
 frontend/dist
-app/static
 images/
 .git

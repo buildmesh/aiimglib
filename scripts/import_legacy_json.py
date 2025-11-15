@@ -101,6 +101,10 @@ def import_entries(entries: list[dict], source_dir: Path, dry_run: bool = False)
                 logger.error("Skipping %s: %s", entry.get("file"), exc)
                 raise
 
+            suffix = source_file.suffix.lower()
+            if suffix not in files.ALLOWED_EXTENSIONS:
+                raise ValueError(f"Unsupported legacy file extension: {suffix}")
+
             if not dry_run:
                 copied_name = files.copy_into_images(source_file, converted["file_name"])
                 converted["file_name"] = copied_name
