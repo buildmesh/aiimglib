@@ -72,13 +72,20 @@ def convert_entry(entry: dict) -> dict:
     prompt_text, prompt_meta = normalize_prompt(entry.get("prompt"))
     tags = sorted({tag.strip().lower() for tag in entry.get("tags", []) if tag.strip()})
     sanitized_name = files.sanitize_storage_name(entry["file"])
+    raw_rating = entry.get("rating")
+    rating_value: int | None = None
+    if raw_rating is not None:
+        try:
+            rating_value = int(float(raw_rating))
+        except (TypeError, ValueError):
+            raise ValueError(f"Invalid rating value: {raw_rating}") from None
     return {
         "file_name": sanitized_name,
         "prompt_text": prompt_text,
         "prompt_meta": prompt_meta,
         "ai_model": entry.get("ai_model"),
         "notes": entry.get("notes"),
-        "rating": entry.get("rating"),
+        "rating": rating_value,
         "captured_at": parse_datetime(entry.get("date")),
         "tags": tags,
     }

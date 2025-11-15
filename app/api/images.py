@@ -61,7 +61,12 @@ def _parse_optional_int(raw: str | None) -> int | None:
 
 
 def _image_to_schema(image: models.Image) -> schemas.ImageRead:
-    return schemas.ImageRead.model_validate(image, from_attributes=True)
+    data = image.model_dump()
+    rating = data.get("rating")
+    if rating is not None:
+        data["rating"] = int(rating)
+    data["tags"] = [tag.model_dump() for tag in image.tags]
+    return schemas.ImageRead.model_validate(data)
 
 
 def _tags_from_query(raw: str | None) -> List[str]:
