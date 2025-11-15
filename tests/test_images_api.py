@@ -64,3 +64,20 @@ def test_upload_list_update_and_delete_flow(api_client):
     delete_resp = api_client.delete(f"/api/images/{created['id']}")
     assert delete_resp.status_code == 204
     assert not new_path.exists()
+
+
+def test_upload_invalid_captured_at_returns_422(api_client):
+    files = {
+        "image_file": ("sample.png", io.BytesIO(b"fake-image-bytes"), "image/png"),
+    }
+    data = {
+        "prompt_text": "Invalid timestamp test",
+        "captured_at": "not-a-date",
+        "tags": json.dumps([]),
+    }
+
+    response = api_client.post("/api/images", data=data, files=files)
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "captured_at must be ISO-8601 datetime"
+    assert not any(settings.images_dir.iterdir())

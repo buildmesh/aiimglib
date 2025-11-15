@@ -22,7 +22,12 @@ def _parse_datetime(value: str | None) -> datetime | None:
     normalized = value.strip()
     if normalized.endswith("Z"):
         normalized = normalized[:-1] + "+00:00"
-    return datetime.fromisoformat(normalized)
+    try:
+        return datetime.fromisoformat(normalized)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422, detail="captured_at must be ISO-8601 datetime"
+        ) from exc
 
 
 def _parse_tags_field(raw: str | None) -> List[str]:
