@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Image Gallery</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="app" class="app">
+      <header class="app__header">
+        <h1>AI Image Library</h1>
+        <div class="filters">
+          <input type="text" id="searchInput" placeholder="Search prompts or notes" />
+          <select id="tagFilter" multiple></select>
+          <button id="refreshButton">Refresh</button>
+        </div>
+      </header>
+      <main id="gallery" class="gallery"></main>
+      <template id="image-card-template">
+        <article class="card">
+          <img data-image src="" alt="" loading="lazy" />
+          <div class="card__body">
+            <h2 data-title></h2>
+            <p data-prompt></p>
+            <div data-tags class="tags"></div>
+          </div>
+        </article>
+      </template>
+    </div>
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>
