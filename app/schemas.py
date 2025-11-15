@@ -15,6 +15,11 @@ class TagRead(BaseModel):
     name: str
 
 
+class TagUsage(BaseModel):
+    name: str
+    count: int
+
+
 class ImageBase(BaseModel):
     file_name: str
     prompt_text: str
@@ -45,3 +50,8 @@ class ImageRead(ImageBase):
     created_at: datetime
     updated_at: datetime
     tags: List[TagRead] = Field(default_factory=list)
+
+
+class ImageListResponse(BaseModel):
+    items: List[ImageRead]
+    total: int

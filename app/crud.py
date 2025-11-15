@@ -96,7 +96,12 @@ def list_images(session: Session, filters: ImageFilters | None = None) -> Tuple[
 
 def get_image(session: Session, image_id: str) -> models.Image:
     """Fetch a single image by ID or raise 404."""
-    image = session.get(models.Image, image_id)
+    stmt = (
+        select(models.Image)
+        .options(selectinload(models.Image.tags))
+        .where(models.Image.id == image_id)
+    )
+    image = session.exec(stmt).first()
     if image is None:
         raise HTTPException(status_code=404, detail="Image not found")
     return image
