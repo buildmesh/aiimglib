@@ -4,9 +4,8 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Iterable, List
-
 from datetime import datetime
+from typing import Iterable, List, Tuple, Union
 
 from sqlmodel import SQLModel, select
 
@@ -27,10 +26,14 @@ def parse_args() -> argparse.Namespace:
 
 def load_entries(path: Path) -> list[dict]:
     data = json.loads(path.read_text())
-    if not isinstance(data, list):
-        msg = "Legacy JSON must be a list of image entries."
+    if not isinstance(data, dict) or "image" not in data:
+        msg = "Legacy JSON must be an object with an 'image' list."
         raise ValueError(msg)
-    return data
+    entries = data["image"]
+    if not isinstance(entries, list):
+        msg = "'image' must contain a list of entries."
+        raise ValueError(msg)
+    return entries
 
 
 def ensure_tags(session, names: Iterable[str]) -> List[models.Tag]:
@@ -47,26 +50,50 @@ def ensure_tags(session, names: Iterable[str]) -> List[models.Tag]:
     return tags
 
 
+PromptMeta = Union[dict, list, str, None]
+
+
 def parse_datetime(value) -> datetime | None:
     if value is None or isinstance(value, datetime):
         return value
-    return datetime.fromisoformat(value)
+    if isinstance(value, str):
+        iso_value = value
+        if iso_value.endswith("Z"):
+            iso_value = iso_value[:-1] + "+00:00"
+        return datetime.fromisoformat(iso_value)
+    raise ValueError("Unsupported datetime value")
+
+
+def normalize_prompt(prompt) -> Tuple[str, PromptMeta]:
+    if isinstance(prompt, list):
+        text = next((item for item in reversed(prompt) if isinstance(item, str)), "")
+        return text, prompt
+    if isinstance(prompt, str):
+        return prompt, prompt
+    return "", None
+
+
+def convert_entry(entry: dict) -> dict:
+    prompt_text, prompt_meta = normalize_prompt(entry.get("prompt"))
+    tags = sorted({tag.strip().lower() for tag in entry.get("tags", []) if tag.strip()})
+    return {
+        "file_name": entry["file"],
+        "prompt_text": prompt_text,
+        "prompt_meta": prompt_meta,
+        "ai_model": entry.get("ai_model"),
+        "notes": entry.get("notes"),
+        "rating": entry.get("rating"),
+        "captured_at": parse_datetime(entry.get("date")),
+        "tags": tags,
+    }
 
 
 def import_entries(entries: list[dict], dry_run: bool = False) -> None:
     with session_scope() as session:
         for entry in entries:
-            tags = ensure_tags(session, entry.get("tags", []))
-            image = models.Image(
-                file_name=entry["file_name"],
-                prompt_text=entry.get("prompt_text", ""),
-                prompt_meta=entry.get("prompt_meta"),
-                ai_model=entry.get("ai_model"),
-                notes=entry.get("notes"),
-                rating=entry.get("rating"),
-                captured_at=parse_datetime(entry.get("captured_at")),
-                tags=tags,
-            )
+            converted = convert_entry(entry)
+            tag_instances = ensure_tags(session, converted.pop("tags"))
+            image = models.Image(**converted, tags=tag_instances)
             session.add(image)
         if dry_run:
             session.rollback()

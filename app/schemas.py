@@ -7,7 +7,7 @@ from typing import List, Optional, Union
 from pydantic import BaseModel, Field
 
 
-PromptMetaType = Union[dict, list[str], None]
+PromptMetaType = Union[dict, list, str, None]
 
 
 class TagRead(BaseModel):

@@ -1,6 +1,6 @@
 """SQLModel declarative models."""
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Union
 from uuid import uuid4
 
 from sqlalchemy import Column, JSON
@@ -20,7 +20,7 @@ class Image(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
     file_name: str
     prompt_text: str
-    prompt_meta: dict | None = Field(default=None, sa_column=Column(JSON))
+    prompt_meta: Union[dict, list, str, None] = Field(default=None, sa_column=Column(JSON))
     ai_model: str | None = None
     notes: str | None = None
     rating: int | None = Field(default=None, ge=0, le=5)
