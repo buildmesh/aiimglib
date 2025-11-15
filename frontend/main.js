@@ -104,6 +104,7 @@ async function handleUpload(event) {
     }
     form.reset();
     closeModal("uploadModal");
+    await populateTags();
     await refreshGallery();
   } catch (error) {
     alert(error.message);
@@ -143,6 +144,7 @@ async function handleEdit(event) {
       throw new Error("Update failed");
     }
     closeModal("editModal");
+    await populateTags();
     await refreshGallery();
   } catch (error) {
     alert(error.message);
