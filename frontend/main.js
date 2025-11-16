@@ -1,4 +1,5 @@
 import "./styles.css";
+import { extractDateFromFilename } from "./dateUtils.js";
 
 const state = {
   items: [],
@@ -315,38 +316,6 @@ function clearFilters() {
   });
   updateTagSummary();
   refreshGallery(true);
-}
-
-function extractDateFromFilename(filename = "") {
-  if (!filename) return null;
-  const base = filename.split(".")[0];
-  const isoMatch = base.match(
-    /(\d{4})[-_]?(\d{2})[-_]?(\d{2})(?:[-_]?(\d{2})[-_]?(\d{2})[-_]?(\d{2}))?/
-  );
-  if (isoMatch) {
-    const [, year, month, day, hour = "00", minute = "00", second = "00"] = isoMatch;
-    const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second)));
-    return formatDateForInput(date);
-  }
-  const unixMatch = base.match(/(\d{10,})/);
-  if (unixMatch) {
-    const raw = unixMatch[1];
-    const timestamp =
-      raw.length > 10 ? Number(raw) / 10 ** (raw.length - 10) : Number(raw);
-    if (!Number.isNaN(timestamp)) {
-      const date = new Date(timestamp * 1000);
-      return formatDateForInput(date);
-    }
-  }
-  return null;
-}
-
-function formatDateForInput(date) {
-  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
-    return null;
-  }
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-  return local.toISOString().slice(0, 16);
 }
 
 function setupTagFilterCollapse() {
