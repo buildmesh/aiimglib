@@ -43,21 +43,19 @@ function openModal(id) {
 
 function closeModal(id) {
   document.getElementById(id).hidden = true;
-  document.removeEventListener("keydown", handleEscape);
+  if (document.querySelectorAll(".modal:not([hidden])").length === 0) {
+    document.removeEventListener("keydown", handleEscape);
+  }
 }
 
 function handleEscape(event) {
   if (event.key === "Escape") {
-    let closed = false;
     document.querySelectorAll(".modal").forEach((modal) => {
       if (!modal.hidden) {
-        modal.hidden = true;
-        closed = true;
+        closeModal(modal.id);
       }
     });
-    if (closed) {
-      event.preventDefault();
-    }
+    event.preventDefault();
   }
 }
 
@@ -257,6 +255,9 @@ function wireEvents() {
   document.getElementById("addImageButton").addEventListener("click", () => openModal("uploadModal"));
   document.querySelectorAll("[data-close-modal]").forEach((button) => {
     button.addEventListener("click", (event) => closeModal(event.currentTarget.dataset.closeModal));
+  });
+  document.getElementById("uploadModal").addEventListener("close", () => {
+    capturedAtDirty = false;
   });
   document.getElementById("uploadForm").addEventListener("submit", handleUpload);
   document.getElementById("editForm").addEventListener("submit", handleEdit);

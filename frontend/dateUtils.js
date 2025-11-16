@@ -3,7 +3,8 @@ const ISO_FILENAME_REGEX =
 
 export function parseUtcDateFromFilename(filename = "") {
   if (!filename) return null;
-  const base = filename.split(".")[0];
+  const dotIndex = filename.lastIndexOf(".");
+  const base = dotIndex >= 0 ? filename.slice(0, dotIndex) : filename;
   const isoMatch = /[-_T]/.test(base) ? base.match(ISO_FILENAME_REGEX) : null;
   if (isoMatch) {
     const [, year, month, day, hour = "00", minute = "00", second = "00"] = isoMatch;
