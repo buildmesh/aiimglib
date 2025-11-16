@@ -331,9 +331,10 @@ function extractDateFromFilename(filename = "") {
   const unixMatch = base.match(/(\d{10,})/);
   if (unixMatch) {
     const raw = unixMatch[1];
-    const timestamp = raw.length > 10 ? Number(raw) : Number(raw) * 1000;
+    const timestamp =
+      raw.length > 10 ? Number(raw) / 10 ** (raw.length - 10) : Number(raw);
     if (!Number.isNaN(timestamp)) {
-      const date = new Date(timestamp);
+      const date = new Date(timestamp * 1000);
       return formatDateForInput(date);
     }
   }
