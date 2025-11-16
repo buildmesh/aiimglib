@@ -234,6 +234,9 @@ function openDetailModal(imageId) {
   imageEl.src = `/images/${image.file_name}`;
   imageEl.alt = image.prompt_text;
   document.getElementById("detailPrompt").textContent = image.prompt_text;
+  document.getElementById("detailCapturedAt").textContent = image.captured_at
+    ? new Date(image.captured_at).toUTCString()
+    : "Unknown";
   document.getElementById("detailModel").textContent = image.ai_model || "Unknown";
   document.getElementById("detailRating").textContent =
     typeof image.rating === "number" ? `${image.rating}/5` : "Unrated";
