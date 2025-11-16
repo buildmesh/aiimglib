@@ -5,7 +5,7 @@ import argparse
 import json
 import logging
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Tuple, Union
 
@@ -51,8 +51,16 @@ PromptMeta = Union[dict, list, str, None]
 def parse_datetime(value) -> datetime | None:
     if value is None or isinstance(value, datetime):
         return value
+    if isinstance(value, (int, float)):
+        return datetime.fromtimestamp(float(value), tz=timezone.utc)
     if isinstance(value, str):
-        iso_value = value
+        iso_value = value.strip()
+        if iso_value.isdigit():
+            seconds = int(iso_value)
+            if len(iso_value) > 10:
+                divisor = 10 ** (len(iso_value) - 10)
+                seconds = seconds / divisor
+            return datetime.fromtimestamp(seconds, tz=timezone.utc)
         if iso_value.endswith("Z"):
             iso_value = iso_value[:-1] + "+00:00"
         return datetime.fromisoformat(iso_value)

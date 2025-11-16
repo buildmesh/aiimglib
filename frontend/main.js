@@ -92,7 +92,6 @@ function renderCards(items) {
       : "Model unknown";
     renderTags(fragment.querySelector("[data-tags]"), item.tags);
     fragment.querySelector("[data-edit-button]").addEventListener("click", () => openEditModal(item.id));
-    fragment.querySelector("[data-view-button]").addEventListener("click", () => openDetailModal(item.id));
     gallery.appendChild(fragment);
   });
 }
@@ -290,6 +289,7 @@ function wireEvents() {
       }
     });
   }
+  setupTagFilterCollapse();
 }
 
 async function bootstrap() {
@@ -346,4 +346,16 @@ function formatDateForInput(date) {
   }
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return local.toISOString().slice(0, 16);
+}
+
+function setupTagFilterCollapse() {
+  const tagFilter = document.querySelector(".tag-filter");
+  if (!tagFilter) {
+    return;
+  }
+  document.addEventListener("click", (event) => {
+    if (!tagFilter.contains(event.target)) {
+      tagFilter.removeAttribute("open");
+    }
+  });
 }

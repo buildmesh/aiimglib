@@ -167,6 +167,11 @@ body {
   font-size: 0.85rem;
 }
 
+.card__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
 .tags {
   display: flex;
   flex-wrap: wrap;
