@@ -4,7 +4,7 @@ from enum import Enum
 from typing import List, Optional
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 from sqlalchemy import Column, Float, JSON
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -32,6 +32,8 @@ class ImageValidator(BaseModel):
 
     prompt_meta: PromptMetaType = None
     rating: float | None = None
+    media_type: MediaType = MediaType.IMAGE
+    thumbnail_file: str | None = None
 
     @field_validator("prompt_meta", mode="before")
     @classmethod
@@ -50,6 +52,12 @@ class ImageValidator(BaseModel):
         if not 0 <= rating <= 5:
             raise ValueError("rating must be between 0 and 5")
         return round(rating, 1)
+
+    @model_validator(mode="after")
+    def _require_thumbnail_for_videos(self):
+        if self.media_type == MediaType.VIDEO and not self.thumbnail_file:
+            raise ValueError("videos require thumbnail_file")
+        return self
 
 
 class Image(SQLModel, table=True):

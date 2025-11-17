@@ -96,3 +96,21 @@ def test_image_prompt_meta_references_must_be_id_only_dicts() -> None:
             prompt_text="ignored",
             prompt_meta=[{"id": "abc"}, {"not_id": "oops"}, "final prompt"],
         )
+
+
+def test_image_prompt_meta_allows_extra_reference_fields() -> None:
+    image = models.Image(
+        file_name="ok.png",
+        prompt_text="hello",
+        prompt_meta=[{"id": "abc", "weight": 0.5}, "final prompt"],
+    )
+    assert image.prompt_meta[-1] == "final prompt"
+
+
+def test_image_model_requires_thumbnail_for_videos() -> None:
+    with pytest.raises(ValidationError):
+        models.Image(
+            file_name="clip.mp4",
+            prompt_text="video",
+            media_type=models.MediaType.VIDEO,
+        )

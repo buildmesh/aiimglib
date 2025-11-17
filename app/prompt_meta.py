@@ -25,9 +25,9 @@ def validate_prompt_meta_structure(value: PromptMetaType) -> PromptMetaType:
                 "prompt reference lists must end with the prompt text string"
             )
         for ref in references:
-            if not isinstance(ref, dict) or set(ref.keys()) != {"id"}:
+            if not isinstance(ref, dict) or "id" not in ref:
                 raise PromptMetaFormatError(
-                    "prompt references must be objects containing only an 'id' field"
+                    "prompt references must include an 'id' field"
                 )
             ref_id = ref["id"]
             if not isinstance(ref_id, str) or not ref_id:
