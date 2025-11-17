@@ -10,7 +10,7 @@ def upload(client, prompt, tags):
         "prompt_text": prompt,
         "tags": json.dumps(tags),
     }
-    files = {"image_file": ("a.png", io.BytesIO(b"img"), "image/png")}
+    files = {"media_file": ("a.png", io.BytesIO(b"img"), "image/png")}
     resp = client.post("/api/images", data=data, files=files)
     assert resp.status_code == 201, resp.text
     return resp.json()

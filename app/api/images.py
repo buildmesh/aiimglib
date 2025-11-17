@@ -51,20 +51,17 @@ def _parse_prompt_meta(raw: str | None) -> Any:
         return raw
 
 
-def _parse_optional_int(raw: str | None) -> int | None:
+def _parse_optional_float(raw: str | None) -> float | None:
     if raw is None or raw == "":
         return None
     try:
-        return int(raw)
+        return float(raw)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail="rating must be an integer") from exc
+        raise HTTPException(status_code=400, detail="rating must be a number") from exc
 
 
 def _image_to_schema(image: models.Image) -> schemas.ImageRead:
     data = image.model_dump()
-    rating = data.get("rating")
-    if rating is not None:
-        data["rating"] = int(rating)
     data["tags"] = [tag.model_dump() for tag in image.tags]
     return schemas.ImageRead.model_validate(data)
 
@@ -75,11 +72,12 @@ def _tags_from_query(raw: str | None) -> List[str]:
     return [part.strip() for part in raw.split(",") if part.strip()]
 
 
-def _store_upload_or_400(upload: UploadFile) -> str:
-    if not files.is_allowed_upload(upload):
+def _store_upload_or_400(upload: UploadFile, media_type: models.MediaType) -> str:
+    if not files.is_allowed_upload(upload, media_type):
+        allowed = ", ".join(sorted(files.allowed_content_types_for(media_type)))
         raise HTTPException(
             status_code=400,
-            detail="Only PNG, JPG, and WEBP images are allowed.",
+            detail=f"Invalid upload type. Allowed content types: {allowed}",
         )
     try:
         return files.save_upload(upload)
@@ -87,15 +85,33 @@ def _store_upload_or_400(upload: UploadFile) -> str:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+def _parse_media_type(raw: str | None) -> models.MediaType:
+    if raw is None:
+        return models.MediaType.IMAGE
+    try:
+        return models.MediaType(raw)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid media_type") from exc
+
+
+def _require_thumbnail_if_video(media_type: models.MediaType, thumbnail: UploadFile | None) -> None:
+    if media_type == models.MediaType.VIDEO and thumbnail is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Video uploads require a thumbnail_file.",
+        )
+
+
 @router.get("/", response_model=schemas.ImageListResponse)
 def list_images(
     pagination: PaginationParams = Depends(pagination_params),
     q: str | None = Query(None),
     tags: str | None = Query(None),
-    rating_min: int | None = Query(None, ge=0, le=5),
-    rating_max: int | None = Query(None, ge=0, le=5),
+    rating_min: float | None = Query(None, ge=0, le=5),
+    rating_max: float | None = Query(None, ge=0, le=5),
     date_from: datetime | None = Query(None),
     date_to: datetime | None = Query(None),
+    media_type: models.MediaType | None = Query(None),
     session: Session = Depends(db_session),
 ):
     filters = crud.ImageFilters(
@@ -107,6 +123,7 @@ def list_images(
         date_to=date_to,
         limit=pagination.page_size,
         offset=pagination.offset,
+        media_type=media_type,
     )
     items, total = crud.list_images(session, filters)
     return schemas.ImageListResponse(
@@ -126,32 +143,42 @@ def retrieve_image(
 
 @router.post("/", response_model=schemas.ImageRead, status_code=status.HTTP_201_CREATED)
 def create_image_endpoint(
-    image_file: UploadFile = File(...),
+    media_file: UploadFile = File(...),
     prompt_text: str = Form(...),
     tags: str | None = Form(None),
     rating: str | None = Form(None),
+    media_type: str | None = Form("image"),
     ai_model: str | None = Form(None),
     notes: str | None = Form(None),
     captured_at: str | None = Form(None),
     prompt_meta: str | None = Form(None),
+    thumbnail_file: UploadFile | None = File(None),
     session: Session = Depends(db_session),
 ) -> schemas.ImageRead:
-    saved_file = _store_upload_or_400(image_file)
+    parsed_media_type = _parse_media_type(media_type)
+    _require_thumbnail_if_video(parsed_media_type, thumbnail_file)
+
+    saved_file = _store_upload_or_400(media_file, parsed_media_type)
+    saved_thumbnail: str | None = None
+    if thumbnail_file is not None:
+        saved_thumbnail = _store_upload_or_400(thumbnail_file, models.MediaType.IMAGE)
     try:
         payload = schemas.ImageCreate(
             file_name=saved_file,
+            media_type=parsed_media_type,
             prompt_text=prompt_text,
             prompt_meta=_parse_prompt_meta(prompt_meta),
             ai_model=ai_model,
             notes=notes,
-            rating=_parse_optional_int(rating),
+            rating=_parse_optional_float(rating),
             captured_at=_parse_datetime(captured_at),
+            thumbnail_file=saved_thumbnail,
             tags=_parse_tags_field(tags),
         )
         image = crud.create_image(session, payload)
         return _image_to_schema(image)
     except Exception:
-        files.delete_file(saved_file)
+        files.delete_media_files(saved_file, saved_thumbnail)
         raise
 
 
@@ -168,12 +195,12 @@ def update_image_endpoint(
 @router.post("/{image_id}/file", response_model=schemas.ImageRead)
 def replace_image_file(
     image_id: str,
-    image_file: UploadFile = File(...),
+    media_file: UploadFile = File(...),
     session: Session = Depends(db_session),
 ) -> schemas.ImageRead:
     image = crud.get_image(session, image_id)
     old_file = image.file_name
-    new_file = _store_upload_or_400(image_file)
+    new_file = _store_upload_or_400(media_file, image.media_type)
     try:
         image.file_name = new_file
         image.updated_at = datetime.utcnow()
@@ -192,7 +219,4 @@ def delete_image_endpoint(
     image_id: str,
     session: Session = Depends(db_session),
 ) -> None:
-    image = crud.get_image(session, image_id)
-    file_name = image.file_name
     crud.delete_image(session, image_id)
-    files.delete_file(file_name)
