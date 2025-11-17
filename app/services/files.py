@@ -10,9 +10,15 @@ from uuid import uuid4
 from fastapi import UploadFile
 
 from app.config import settings
+from app.models import MediaType
 
-ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
-ALLOWED_CONTENT_TYPES = {"image/png", "image/jpeg", "image/webp"}
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
+VIDEO_EXTENSIONS = {".mp4", ".mov", ".webm", ".mkv"}
+ALLOWED_EXTENSIONS = IMAGE_EXTENSIONS | VIDEO_EXTENSIONS
+
+IMAGE_CONTENT_TYPES = {"image/png", "image/jpeg", "image/webp"}
+VIDEO_CONTENT_TYPES = {"video/mp4", "video/webm", "video/quicktime"}
+ALLOWED_CONTENT_TYPES = IMAGE_CONTENT_TYPES | VIDEO_CONTENT_TYPES
 _SAFE_NAME_PATTERN = re.compile(r"[^A-Za-z0-9._-]")
 
 logger = logging.getLogger(__name__)
@@ -45,11 +51,19 @@ def _resolve_images_path(file_name: str) -> Path:
     return destination
 
 
-def is_allowed_upload(upload: UploadFile) -> bool:
+def allowed_extensions_for(media_type: MediaType) -> set[str]:
+    return IMAGE_EXTENSIONS if media_type == MediaType.IMAGE else VIDEO_EXTENSIONS
+
+
+def allowed_content_types_for(media_type: MediaType) -> set[str]:
+    return IMAGE_CONTENT_TYPES if media_type == MediaType.IMAGE else VIDEO_CONTENT_TYPES
+
+
+def is_allowed_upload(upload: UploadFile, media_type: MediaType = MediaType.IMAGE) -> bool:
     """Return True if the upload's extension & content type are allowed."""
     suffix = Path(upload.filename or "").suffix.lower()
-    return suffix in ALLOWED_EXTENSIONS and (
-        upload.content_type in ALLOWED_CONTENT_TYPES
+    return suffix in allowed_extensions_for(media_type) and (
+        upload.content_type in allowed_content_types_for(media_type)
     )
 
 
@@ -92,3 +106,13 @@ def delete_file(file_name: str) -> None:
         return
     except OSError as exc:
         logger.warning("Failed to delete %s: %s", path, exc)
+
+
+def delete_media_files(*file_names: str | None) -> None:
+    """Delete one or more managed media files without raising."""
+    seen: set[str] = set()
+    for name in file_names:
+        if not name or name in seen:
+            continue
+        seen.add(name)
+        delete_file(name)

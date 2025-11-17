@@ -11,7 +11,7 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from app import models, schemas
-from app.services import tags as tag_service
+from app.services import files, tags as tag_service
 
 
 @dataclass
@@ -20,12 +20,13 @@ class ImageFilters:
 
     q: str | None = None
     tags: List[str] = field(default_factory=list)
-    rating_min: int | None = None
-    rating_max: int | None = None
+    rating_min: float | None = None
+    rating_max: float | None = None
     date_from: datetime | None = None
     date_to: datetime | None = None
     limit: int = 20
     offset: int = 0
+    media_type: models.MediaType | None = None
 
 
 def _normalized_tags(names: Iterable[str]) -> list[str]:
@@ -70,6 +71,9 @@ def _apply_filters(stmt, filters: ImageFilters):
         )
         stmt = stmt.where(models.Image.id.in_(link_stmt))
 
+    if filters.media_type is not None:
+        stmt = stmt.where(models.Image.media_type == filters.media_type)
+
     return stmt
 
 
@@ -111,12 +115,14 @@ def create_image(session: Session, data: schemas.ImageCreate) -> models.Image:
     """Persist a new image record."""
     image = models.Image(
         file_name=data.file_name,
+        media_type=data.media_type,
         prompt_text=data.prompt_text,
         prompt_meta=data.prompt_meta,
         ai_model=data.ai_model,
         notes=data.notes,
         rating=data.rating,
         captured_at=data.captured_at,
+        thumbnail_file=data.thumbnail_file,
     )
     image.tags = tag_service.ensure_tags(session, data.tags)
     session.add(image)
@@ -125,11 +131,46 @@ def create_image(session: Session, data: schemas.ImageCreate) -> models.Image:
     return image
 
 
+def _validate_and_normalize_updates(
+    image: models.Image, updates: dict
+) -> dict:
+    """Run incoming updates through the shared validator for consistency."""
+    validator_input = {
+        "prompt_meta": updates.get("prompt_meta", image.prompt_meta),
+        "rating": updates.get("rating", image.rating),
+        "media_type": updates.get("media_type", image.media_type),
+        "thumbnail_file": updates.get("thumbnail_file", image.thumbnail_file),
+    }
+    validated = models.ImageValidator.model_validate(validator_input)
+
+    if "prompt_meta" in updates:
+        updates["prompt_meta"] = validated.prompt_meta
+    if "rating" in updates:
+        updates["rating"] = validated.rating
+    if "media_type" in updates:
+        updates["media_type"] = validated.media_type
+    if "thumbnail_file" in updates:
+        updates["thumbnail_file"] = validated.thumbnail_file
+
+    # Video thumbnail requirement should also trigger when media_type changes without thumbnail.
+    if (
+        "media_type" in updates or "thumbnail_file" in updates
+    ) and validated.media_type == models.MediaType.VIDEO and not validated.thumbnail_file:
+        raise ValueError("videos require thumbnail_file")
+    return updates
+
+
 def update_image(session: Session, image_id: str, data: schemas.ImageUpdate) -> models.Image:
     """Update an image record with new metadata."""
     image = get_image(session, image_id)
     update_payload = data.model_dump(exclude_unset=True)
     tag_names = update_payload.pop("tags", None)
+
+    if any(
+        field in update_payload
+        for field in ("prompt_meta", "rating", "media_type", "thumbnail_file")
+    ):
+        update_payload = _validate_and_normalize_updates(image, update_payload)
 
     for field, value in update_payload.items():
         setattr(image, field, value)
@@ -147,5 +188,8 @@ def update_image(session: Session, image_id: str, data: schemas.ImageUpdate) -> 
 def delete_image(session: Session, image_id: str) -> None:
     """Remove an image record."""
     image = get_image(session, image_id)
+    file_name = image.file_name
+    thumbnail_name = image.thumbnail_file
     session.delete(image)
     session.commit()
+    files.delete_media_files(file_name, thumbnail_name)

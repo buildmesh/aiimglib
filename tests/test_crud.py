@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi import HTTPException
+from pydantic import ValidationError
 from sqlmodel import Session, SQLModel, create_engine
 
 from app import models, schemas
@@ -104,3 +105,83 @@ def test_delete_image_removes_record(session):
 
     with pytest.raises(HTTPException):
         get_image(session, created.id)
+
+
+def test_create_image_persists_prompt_references(session):
+    prompt_meta = [{"id": "seed-1"}, "final prompt"]
+    created = create_image(
+        session,
+        schemas.ImageCreate(
+            file_name="prompt.png",
+            prompt_text="final prompt",
+            prompt_meta=prompt_meta,
+            tags=["test"],
+        ),
+    )
+
+    assert created.prompt_meta == prompt_meta
+
+
+def test_list_images_supports_decimal_rating_filters(session):
+    base_time = datetime.now(tz=timezone.utc)
+    create_image(
+        session,
+        schemas.ImageCreate(
+            file_name="high.png",
+            prompt_text="High rating",
+            rating=4.2,
+            captured_at=base_time,
+        ),
+    )
+    create_image(
+        session,
+        schemas.ImageCreate(
+            file_name="low.png",
+            prompt_text="Low rating",
+            rating=3.4,
+            captured_at=base_time,
+        ),
+    )
+
+    filters = ImageFilters(rating_min=4.0, rating_max=4.3, limit=10)
+    items, total = list_images(session, filters)
+
+    assert total == 1
+    assert items[0].file_name == "high.png"
+
+
+def test_create_video_requires_thumbnail(session):
+    with pytest.raises(ValidationError):
+        create_image(
+            session,
+            schemas.ImageCreate(
+                file_name="clip.mp4",
+                prompt_text="Video without thumbnail",
+                media_type=models.MediaType.VIDEO,
+            ),
+        )
+
+
+def test_delete_image_removes_primary_and_thumbnail_files(session, monkeypatch):
+    deleted_files: list[str] = []
+
+    def fake_delete(name: str | None) -> None:
+        if name:
+            deleted_files.append(name)
+
+    monkeypatch.setattr("app.services.files.delete_file", fake_delete)
+
+    created = create_image(
+        session,
+        schemas.ImageCreate(
+            file_name="clip.mp4",
+            prompt_text="Video with thumbnail",
+            media_type=models.MediaType.VIDEO,
+            thumbnail_file="clip-thumb.png",
+        ),
+    )
+
+    delete_image(session, created.id)
+
+    assert created.file_name in deleted_files
+    assert created.thumbnail_file in deleted_files
