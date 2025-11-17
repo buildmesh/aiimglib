@@ -7,7 +7,7 @@ import logging
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Tuple, Union
+from typing import Tuple
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
@@ -18,6 +18,11 @@ from sqlmodel import SQLModel
 from app import models
 from app.database import engine, session_scope
 from app.services import files, tags as tag_service
+from app.prompt_meta import (
+    PromptMetaType,
+    PromptMetaFormatError,
+    validate_prompt_meta_structure,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +50,6 @@ def load_entries(path: Path) -> list[dict]:
     return entries
 
 
-PromptMeta = Union[dict, list, str, None]
-
-
 def parse_datetime(value) -> datetime | None:
     if value is None or isinstance(value, datetime):
         return value
@@ -67,33 +69,63 @@ def parse_datetime(value) -> datetime | None:
     raise ValueError("Unsupported datetime value")
 
 
-def normalize_prompt(prompt) -> Tuple[str, PromptMeta]:
-    if isinstance(prompt, list):
-        text = next((item for item in reversed(prompt) if isinstance(item, str)), "")
-        return text, prompt
+def normalize_prompt(prompt) -> Tuple[str, PromptMetaType]:
+    if prompt is None:
+        return "", None
     if isinstance(prompt, str):
         return prompt, prompt
-    return "", None
+    if isinstance(prompt, list):
+        validated = validate_prompt_meta_structure(prompt)
+        return validated[-1], validated
+    if isinstance(prompt, dict):
+        # Legacy dictionary metadata may contain additional details without text.
+        return "", prompt
+    raise PromptMetaFormatError("Unsupported prompt metadata structure")
+
+
+def detect_media_type(file_name: str) -> models.MediaType:
+    suffix = Path(file_name).suffix.lower()
+    if suffix in {".mp4", ".mov", ".webm", ".mkv"}:
+        return models.MediaType.VIDEO
+    return models.MediaType.IMAGE
+
+
+def sanitize_optional_thumbnail(name: str | None) -> str | None:
+    if not name:
+        return None
+    return files.sanitize_storage_name(name)
+
+
+def normalize_rating(raw_rating) -> float | None:
+    if raw_rating is None:
+        return None
+    try:
+        value = float(raw_rating)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"Invalid rating value: {raw_rating}") from exc
+    if not 0 <= value <= 5:
+        raise ValueError("Rating must be between 0 and 5")
+    return round(value, 1)
 
 
 def convert_entry(entry: dict) -> dict:
     prompt_text, prompt_meta = normalize_prompt(entry.get("prompt"))
     tags = sorted({tag.strip().lower() for tag in entry.get("tags", []) if tag.strip()})
     sanitized_name = files.sanitize_storage_name(entry["file"])
-    raw_rating = entry.get("rating")
-    rating_value: int | None = None
-    if raw_rating is not None:
-        try:
-            rating_value = int(float(raw_rating))
-        except (TypeError, ValueError):
-            raise ValueError(f"Invalid rating value: {raw_rating}") from None
+    media_type = entry.get("media_type")
+    if media_type is None:
+        media_type = detect_media_type(sanitized_name).value
+    raw_rating = normalize_rating(entry.get("rating"))
+    thumbnail_file = sanitize_optional_thumbnail(entry.get("thumbnail_file"))
     return {
         "file_name": sanitized_name,
         "prompt_text": prompt_text,
         "prompt_meta": prompt_meta,
         "ai_model": entry.get("ai_model"),
         "notes": entry.get("notes"),
-        "rating": rating_value,
+        "rating": raw_rating,
+        "media_type": media_type,
+        "thumbnail_file": thumbnail_file,
         "captured_at": parse_datetime(entry.get("date")),
         "tags": tags,
     }

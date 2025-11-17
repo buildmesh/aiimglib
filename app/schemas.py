@@ -2,12 +2,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Optional, Union
+from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
-
-PromptMetaType = Union[dict, list, str, None]
+from app.models import MediaType
+from app.prompt_meta import PromptMetaType, validate_prompt_meta_structure
 
 
 class TagRead(BaseModel):
@@ -22,13 +22,20 @@ class TagUsage(BaseModel):
 
 class ImageBase(BaseModel):
     file_name: str
+    media_type: MediaType = MediaType.IMAGE
     prompt_text: str
     prompt_meta: PromptMetaType = None
     ai_model: Optional[str] = None
     notes: Optional[str] = None
-    rating: Optional[int] = Field(default=None, ge=0, le=5)
+    rating: Optional[float] = Field(default=None, ge=0, le=5)
+    thumbnail_file: Optional[str] = None
     captured_at: Optional[datetime] = None
     tags: List[str] = Field(default_factory=list)
+
+    @field_validator("prompt_meta", mode="before")
+    @classmethod
+    def _validate_prompt_meta(cls, value: PromptMetaType) -> PromptMetaType:
+        return validate_prompt_meta_structure(value)
 
 
 class ImageCreate(ImageBase):
@@ -40,9 +47,16 @@ class ImageUpdate(BaseModel):
     prompt_meta: PromptMetaType = None
     ai_model: Optional[str] = None
     notes: Optional[str] = None
-    rating: Optional[int] = Field(default=None, ge=0, le=5)
+    rating: Optional[float] = Field(default=None, ge=0, le=5)
+    media_type: Optional[MediaType] = None
+    thumbnail_file: Optional[str] = None
     captured_at: Optional[datetime] = None
     tags: Optional[List[str]] = None
+
+    @field_validator("prompt_meta", mode="before")
+    @classmethod
+    def _validate_prompt_meta(cls, value: PromptMetaType) -> PromptMetaType:
+        return validate_prompt_meta_structure(value)
 
 
 class ImageRead(ImageBase):

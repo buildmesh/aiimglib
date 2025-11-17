@@ -1,6 +1,8 @@
 """SQLModel model integration tests."""
 from __future__ import annotations
 
+import pytest
+from pydantic import ValidationError
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from app import models
@@ -55,3 +57,42 @@ def test_image_tag_relationship_round_trip() -> None:
         ).one()
         assert fetched_tag.images
         assert fetched_tag.images[0].id == image.id
+
+
+def test_image_model_persists_media_fields_and_decimal_rating() -> None:
+    engine = create_in_memory_engine()
+    with Session(engine) as session:
+        image = models.Image(
+            file_name="baz.png",
+            media_type=models.MediaType.VIDEO,
+            thumbnail_file="baz-thumb.png",
+            prompt_text="rainy city",
+            rating=4.2,
+        )
+        session.add(image)
+        session.commit()
+        session.refresh(image)
+
+        fetched = session.get(models.Image, image.id)
+        assert fetched is not None
+        assert fetched.media_type == models.MediaType.VIDEO
+        assert fetched.thumbnail_file == "baz-thumb.png"
+        assert pytest.approx(fetched.rating, rel=0.001) == 4.2
+
+
+def test_image_prompt_meta_list_requires_trailing_prompt_text() -> None:
+    with pytest.raises(ValidationError):
+        models.Image(
+            file_name="invalid.png",
+            prompt_text="ignored",
+            prompt_meta=[{"id": "abc"}],
+        )
+
+
+def test_image_prompt_meta_references_must_be_id_only_dicts() -> None:
+    with pytest.raises(ValidationError):
+        models.Image(
+            file_name="invalid2.png",
+            prompt_text="ignored",
+            prompt_meta=[{"id": "abc"}, {"not_id": "oops"}, "final prompt"],
+        )

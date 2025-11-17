@@ -45,3 +45,38 @@ def test_convert_entry_maps_prompt_and_date():
     assert converted["prompt_meta"] == legacy["prompt"]
     assert converted["captured_at"] == datetime(2024, 3, 15, 12, 34, 56, tzinfo=timezone.utc)
     assert sorted(converted["tags"]) == ["scifi"]
+
+
+def test_convert_entry_normalizes_decimal_ratings_and_media_type():
+    legacy = {
+        "file": "clip.MP4",
+        "prompt": "short prompt",
+        "rating": "4.7",
+        "thumbnail_file": "clip-thumb.PNG",
+    }
+
+    converted = importer.convert_entry(legacy)
+
+    assert converted["media_type"] == "video"
+    assert converted["thumbnail_file"] == "clip-thumb.PNG"
+    assert pytest.approx(converted["rating"], rel=0.001) == 4.7
+
+
+def test_convert_entry_rejects_prompt_list_without_trailing_text():
+    legacy = {
+        "file": "broken.png",
+        "prompt": [{"id": "abc"}],
+    }
+
+    with pytest.raises(ValueError):
+        importer.convert_entry(legacy)
+
+
+def test_convert_entry_rejects_prompt_list_with_invalid_reference_shape():
+    legacy = {
+        "file": "broken2.png",
+        "prompt": [{"id": "abc"}, {"not_id": "nope"}, "prompt"],
+    }
+
+    with pytest.raises(ValueError):
+        importer.convert_entry(legacy)
