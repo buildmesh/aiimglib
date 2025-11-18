@@ -5,15 +5,16 @@ import argparse
 import json
 import logging
 import sys
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Tuple
+from typing import Any, Dict, List, Tuple
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel, Session
 
 from app import models
 from app.database import engine, session_scope
@@ -25,6 +26,24 @@ from app.prompt_meta import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ConvertedEntry:
+    payload: Dict[str, Any]
+    tags: List[str]
+    legacy_id: str | None
+    reference_dicts: List[dict]
+    thumbnail_source: str | None = None
+
+
+@dataclass
+class ImportedRecord:
+    image_id: str
+    legacy_id: str | None
+    reference_dicts: List[dict]
+    has_explicit_thumbnail: bool
+    media_type: models.MediaType
 
 
 def parse_args() -> argparse.Namespace:
@@ -69,17 +88,20 @@ def parse_datetime(value) -> datetime | None:
     raise ValueError("Unsupported datetime value")
 
 
-def normalize_prompt(prompt) -> Tuple[str, PromptMetaType]:
+def normalize_prompt(prompt) -> Tuple[str, PromptMetaType, list[dict]]:
     if prompt is None:
-        return "", None
+        return "", None, []
     if isinstance(prompt, str):
-        return prompt, prompt
+        return prompt, prompt, []
     if isinstance(prompt, list):
         validated = validate_prompt_meta_structure(prompt)
-        return validated[-1], validated
+        references = [
+            dict(ref) for ref in validated[:-1] if isinstance(ref, dict)
+        ]
+        return validated[-1], validated, references
     if isinstance(prompt, dict):
         # Legacy dictionary metadata may contain additional details without text.
-        return "", prompt
+        return "", prompt, []
     raise PromptMetaFormatError("Unsupported prompt metadata structure")
 
 
@@ -108,16 +130,23 @@ def normalize_rating(raw_rating) -> float | None:
     return round(value, 1)
 
 
-def convert_entry(entry: dict) -> dict:
-    prompt_text, prompt_meta = normalize_prompt(entry.get("prompt"))
+def convert_entry(entry: dict) -> ConvertedEntry:
+    prompt_text, prompt_meta, references = normalize_prompt(entry.get("prompt"))
     tags = sorted({tag.strip().lower() for tag in entry.get("tags", []) if tag.strip()})
     sanitized_name = files.sanitize_storage_name(entry["file"])
-    media_type = entry.get("media_type")
-    if media_type is None:
-        media_type = detect_media_type(sanitized_name).value
+    legacy_media_type = entry.get("media_type")
+    media_type = (
+        detect_media_type(sanitized_name)
+        if legacy_media_type is None
+        else models.MediaType(legacy_media_type)
+    )
     raw_rating = normalize_rating(entry.get("rating"))
-    thumbnail_file = sanitize_optional_thumbnail(entry.get("thumbnail_file"))
-    return {
+    thumbnail_source = entry.get("thumbnail_file")
+    thumbnail_file = sanitize_optional_thumbnail(thumbnail_source)
+    if media_type == models.MediaType.VIDEO and thumbnail_file is None:
+        raise ValueError("Video entries must include a thumbnail_file")
+
+    payload = {
         "file_name": sanitized_name,
         "prompt_text": prompt_text,
         "prompt_meta": prompt_meta,
@@ -127,8 +156,14 @@ def convert_entry(entry: dict) -> dict:
         "media_type": media_type,
         "thumbnail_file": thumbnail_file,
         "captured_at": parse_datetime(entry.get("date")),
-        "tags": tags,
     }
+    return ConvertedEntry(
+        payload=payload,
+        tags=tags,
+        legacy_id=entry.get("id"),
+        reference_dicts=references,
+        thumbnail_source=thumbnail_source if thumbnail_file else None,
+    )
 
 
 def _resolve_source_file(base_dir: Path, relative_name: str) -> Path:
@@ -144,6 +179,9 @@ def _resolve_source_file(base_dir: Path, relative_name: str) -> Path:
 
 
 def import_entries(entries: list[dict], source_dir: Path, dry_run: bool = False) -> None:
+    imported_records: list[ImportedRecord] = []
+    legacy_lookup: dict[str, dict[str, str | None]] = {}
+
     with session_scope() as session:
         for entry in entries:
             converted = convert_entry(entry)
@@ -157,17 +195,85 @@ def import_entries(entries: list[dict], source_dir: Path, dry_run: bool = False)
             if suffix not in files.ALLOWED_EXTENSIONS:
                 raise ValueError(f"Unsupported legacy file extension: {suffix}")
 
+            payload = dict(converted.payload)
             if not dry_run:
-                copied_name = files.copy_into_images(source_file, converted["file_name"])
-                converted["file_name"] = copied_name
+                copied_name = files.copy_into_images(source_file, payload["file_name"])
+                payload["file_name"] = copied_name
+                if payload.get("thumbnail_file") and converted.thumbnail_source:
+                    thumb_source = _resolve_source_file(source_dir, converted.thumbnail_source)
+                    copied_thumb = files.copy_into_images(thumb_source, payload["thumbnail_file"])
+                    payload["thumbnail_file"] = copied_thumb
 
-            tag_instances = tag_service.ensure_tags(session, converted.pop("tags"))
-            image = models.Image(**converted, tags=tag_instances)
+            tag_instances = tag_service.ensure_tags(session, converted.tags)
+            image = models.Image(**payload, tags=tag_instances)
             session.add(image)
+            session.flush()
+            session.refresh(image)
+
+            imported_records.append(
+                ImportedRecord(
+                    image_id=image.id,
+                    legacy_id=converted.legacy_id,
+                    reference_dicts=converted.reference_dicts,
+                    has_explicit_thumbnail=bool(image.thumbnail_file),
+                    media_type=image.media_type,
+                )
+            )
+            if converted.legacy_id:
+                legacy_lookup[converted.legacy_id] = {
+                    "id": image.id,
+                    "file_name": image.file_name,
+                    "thumbnail_file": image.thumbnail_file,
+                }
+
+        _apply_reference_updates(session, imported_records, legacy_lookup)
+
         if dry_run:
             session.rollback()
         else:
             session.commit()
+
+
+def _apply_reference_updates(
+    session: Session,
+    records: list[ImportedRecord],
+    legacy_lookup: dict[str, dict[str, str | None]],
+) -> None:
+    for record in records:
+        if not record.reference_dicts:
+            continue
+        image = session.get(models.Image, record.image_id)
+        if image is None:
+            continue
+
+        updated_refs: list[dict] = []
+        first_source: dict[str, str | None] | None = None
+        for ref in record.reference_dicts:
+            legacy_ref_id = ref.get("id")
+            if not legacy_ref_id:
+                continue
+            mapped = legacy_lookup.get(legacy_ref_id)
+            if not mapped:
+                continue
+            new_ref = dict(ref)
+            new_ref["id"] = mapped["id"]
+            updated_refs.append(new_ref)
+            if first_source is None:
+                first_source = mapped
+
+        if not updated_refs:
+            continue
+
+        image.prompt_meta = [*updated_refs, image.prompt_text]
+        if not record.has_explicit_thumbnail and first_source:
+            replacement = first_source.get("thumbnail_file") or first_source.get("file_name")
+            image.thumbnail_file = replacement
+            if record.legacy_id and replacement:
+                legacy_lookup.setdefault(
+                    record.legacy_id,
+                    {"id": record.image_id, "file_name": image.file_name, "thumbnail_file": None},
+                )["thumbnail_file"] = replacement
+        session.add(image)
 
 
 def main() -> None:
