@@ -70,7 +70,7 @@
 2. **Upload/Edit modal**: add media-type selector, `media_file` + `thumbnail_file` inputs, decimal rating controls (`step=0.1`), and gallery-style reference picker. Auto-fill thumbnail when uploading a video referencing another asset (first reference).  
 3. **Detail modal**: embed `<video>` for videos, show reference thumbnails with click-to-navigate behavior, display captured date, decimal rating, and notes.  
 4. **Gallery & filters**: show video indicators, decimal ratings, collapsible tag picker with summary, clear-filters button, and optional media-type filter.  
-5. **Reference navigation**: clicking a reference thumbnail opens that record’s detail modal (fetch via `/api/images/{id}`).  
+5. **Reference navigation**: clicking a reference thumbnail opens that record’s detail modal (fetch via `/api/images/{id}`). Show a second list for dependent media (records referencing the current one), styled similarly with thumbnails/click handlers.  
 6. **Thumbnail style selector**: implement radio buttons or select (“Landscape” default, “Portrait”, “Original aspect”). Styles adjust card thumbnail containers appropriately (landscape crops to 4:3, portrait to 3:4, original uses object-fit: contain). Persist preference in `localStorage`.  
 7. **Gallery counters & date/rating UI**: show “Showing N items” near filters/pagination, render captured dates on cards (friendly short format), and draw 5-star rating widgets supporting partial fill (SVG/CSS).  
 8. Run Vitest, rebuild bundle (`npm run build`), ensure `app/static/` is updated.  
