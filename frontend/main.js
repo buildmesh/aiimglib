@@ -115,16 +115,6 @@ function handleEscape(event) {
   }
 }
 
-function truncatePrompt(text) {
-  if (!text) {
-    return "";
-  }
-  if (text.length <= PROMPT_PREVIEW_LIMIT) {
-    return text;
-  }
-  return `${text.slice(0, PROMPT_PREVIEW_LIMIT)}…`;
-}
-
 function syncPromptMeta(key) {
   const formState = forms[key];
   if (!formState) return;
@@ -302,10 +292,6 @@ function renderCards(items) {
     const badge = fragment.querySelector("[data-video-badge]");
     badge.hidden = item.media_type !== "video";
 
-    const promptEl = fragment.querySelector("[data-prompt]");
-    promptEl.textContent = truncatePrompt(item.prompt_text);
-    promptEl.title = item.prompt_text;
-
     const ratingEl = fragment.querySelector("[data-rating]");
     renderStars(ratingEl, item.rating);
     const dateEl = fragment.querySelector("[data-date]");
@@ -474,7 +460,9 @@ async function openDetailModal(imageId) {
   const detail = await fetchImageDetail(imageId);
   if (!detail) return;
   renderDetailMedia(detail);
-  document.getElementById("detailPrompt").textContent = detail.prompt_text;
+  const promptEl = document.getElementById("detailPrompt");
+  const promptText = detail.prompt_text || "None";
+  promptEl.innerHTML = promptText.replace(/\n/g, "<br>");
   document.getElementById("detailCapturedAt").textContent = detail.captured_at
     ? new Date(detail.captured_at).toUTCString()
     : "Unknown";
