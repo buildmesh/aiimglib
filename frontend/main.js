@@ -101,6 +101,12 @@ function closeModal(id) {
 
 function handleEscape(event) {
   if (event.key === "Escape") {
+    const referenceModal = document.getElementById("referenceModal");
+    if (referenceModal && !referenceModal.hidden) {
+      closeModal("referenceModal");
+      event.preventDefault();
+      return;
+    }
     document.querySelectorAll(".modal").forEach((modal) => {
       if (!modal.hidden) {
         closeModal(modal.id);
@@ -216,16 +222,12 @@ function renderReferenceResults(items) {
     date.textContent = formatDisplayDate(item.captured_at);
     meta.appendChild(date);
     li.appendChild(meta);
-    const action = document.createElement("button");
-    action.type = "button";
-    action.className = "secondary";
-    action.textContent = "Use Reference";
-    action.addEventListener("click", () => {
+    li.addEventListener("click", () => {
       const picker = referencePickers[activeReferenceTarget];
       picker?.addReference(item);
       closeModal("referenceModal");
     });
-    li.appendChild(action);
+    li.style.cursor = "pointer";
     resultsEl.appendChild(li);
   });
 }
