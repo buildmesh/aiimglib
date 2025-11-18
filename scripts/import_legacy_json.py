@@ -143,8 +143,14 @@ def convert_entry(entry: dict) -> ConvertedEntry:
     raw_rating = normalize_rating(entry.get("rating"))
     thumbnail_source = entry.get("thumbnail_file")
     thumbnail_file = sanitize_optional_thumbnail(thumbnail_source)
-    if media_type == models.MediaType.VIDEO and thumbnail_file is None:
-        raise ValueError("Video entries must include a thumbnail_file")
+    if (
+        media_type == models.MediaType.VIDEO
+        and thumbnail_file is None
+        and not references
+    ):
+        raise ValueError(
+            "Video entries must include a thumbnail_file or reference another asset"
+        )
 
     payload = {
         "file_name": sanitized_name,

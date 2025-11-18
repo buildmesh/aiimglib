@@ -98,6 +98,19 @@ def test_convert_entry_video_without_thumbnail_or_reference_errors():
         importer.convert_entry(legacy)
 
 
+def test_convert_entry_video_can_defer_thumbnail_to_reference():
+    legacy = {
+        "file": "clip.mp4",
+        "prompt": [{"id": "legacy-base"}, "video prompt"],
+    }
+
+    converted = importer.convert_entry(legacy)
+
+    assert converted.payload["media_type"] == models.MediaType.VIDEO
+    assert converted.payload["thumbnail_file"] is None
+    assert converted.reference_dicts[0]["id"] == "legacy-base"
+
+
 def create_test_session():
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False})
     SQLModel.metadata.create_all(engine)
