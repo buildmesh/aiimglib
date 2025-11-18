@@ -12,7 +12,7 @@
           <h1>AI Image Library</h1>
           <p>Browse, upload, and edit your AI-generated artwork.</p>
         </div>
-        <button id="addImageButton" class="primary">Add Image</button>
+        <button id="addImageButton" class="primary">Add Media</button>
       </header>
       <section class="filters">
         <input type="text" id="searchInput" placeholder="Search prompts, notes, or models" />
@@ -23,10 +23,15 @@
             <p class="tag-filter__hint">Hold Ctrl or ⌘ to select multiple tags.</p>
           </div>
         </details>
-        <input type="number" id="ratingMin" placeholder="Min rating" min="0" max="5" />
-        <input type="number" id="ratingMax" placeholder="Max rating" min="0" max="5" />
+        <input type="number" id="ratingMin" placeholder="Min rating" min="0" max="5" step="0.1" />
+        <input type="number" id="ratingMax" placeholder="Max rating" min="0" max="5" step="0.1" />
         <input type="date" id="dateFrom" aria-label="Date from" />
         <input type="date" id="dateTo" aria-label="Date to" />
+        <select id="mediaTypeFilter" aria-label="Media type filter">
+          <option value="">All media</option>
+          <option value="image">Images</option>
+          <option value="video">Videos</option>
+        </select>
         <button id="refreshButton">Apply Filters</button>
         <button id="clearFiltersButton" class="ghost" type="button">Clear Filters</button>
       </section>
@@ -38,7 +43,10 @@
       </div>
       <template id="image-card-template">
         <article class="card" data-card>
-          <img data-image src="" alt="" loading="lazy" />
+          <div class="card__media" data-media>
+            <img data-image src="" alt="" loading="lazy" />
+            <div class="card__badge" data-video-badge hidden>Video</div>
+          </div>
           <div class="card__body">
             <div class="card__header">
               <h2 data-prompt></h2>
@@ -56,18 +64,38 @@
     <section class="modal" id="uploadModal" hidden>
       <div class="modal__content">
         <header>
-          <h2>Add New Image</h2>
+          <h2>Add New Media</h2>
           <button type="button" class="icon-button" data-close-modal="uploadModal">×</button>
         </header>
         <form id="uploadForm">
           <label>
-            Image File
-            <input type="file" name="image_file" accept="image/*" required />
+            Media Type
+            <select name="media_type" id="uploadMediaType">
+              <option value="image">Image</option>
+              <option value="video">Video</option>
+            </select>
+          </label>
+          <label>
+            Media File
+            <input type="file" name="media_file" accept="image/*,video/*" required />
+          </label>
+          <label class="thumbnail-field" data-thumbnail-field="upload">
+            Thumbnail File
+            <input type="file" name="thumbnail_file" accept="image/*" />
           </label>
           <label>
             Prompt
             <textarea name="prompt_text" required></textarea>
           </label>
+          <input type="hidden" name="prompt_meta" />
+          <div class="reference-picker" data-reference-picker="upload">
+            <div class="reference-picker__header">
+              <h3>Prompt References</h3>
+              <button type="button" class="secondary" data-add-reference="upload">Add Reference</button>
+            </div>
+            <ul class="reference-picker__list" data-reference-list="upload"></ul>
+            <p class="reference-picker__hint">References let you link this prompt to previous results.</p>
+          </div>
           <label>
             Tags (comma separated)
             <input type="text" name="tags" placeholder="space, sci-fi" />
@@ -82,7 +110,7 @@
           </label>
           <label>
             Rating (0-5)
-            <input type="number" name="rating" min="0" max="5" />
+            <input type="number" name="rating" min="0" max="5" step="0.1" />
           </label>
           <label>
             Captured At
@@ -104,10 +132,25 @@
         </header>
         <form id="editForm">
           <input type="hidden" id="editImageId" />
+          <input type="hidden" id="editPromptMeta" />
+          <label>
+            Media Type
+            <select id="editMediaType">
+              <option value="image">Image</option>
+              <option value="video">Video</option>
+            </select>
+          </label>
           <label>
             Prompt
             <textarea id="editPrompt" required></textarea>
           </label>
+          <div class="reference-picker" data-reference-picker="edit">
+            <div class="reference-picker__header">
+              <h3>Prompt References</h3>
+              <button type="button" class="secondary" data-add-reference="edit">Add Reference</button>
+            </div>
+            <ul class="reference-picker__list" data-reference-list="edit"></ul>
+          </div>
           <label>
             Tags (comma separated)
             <input type="text" id="editTags" />
@@ -122,7 +165,7 @@
           </label>
           <label>
             Rating (0-5)
-            <input type="number" id="editRating" min="0" max="5" />
+            <input type="number" id="editRating" min="0" max="5" step="0.1" />
           </label>
           <footer>
             <button type="button" class="secondary" data-close-modal="editModal">Cancel</button>
@@ -139,7 +182,10 @@
           <button type="button" class="icon-button" data-close-modal="detailModal">×</button>
         </header>
         <div class="detail-layout">
-          <img id="detailImage" alt="" loading="lazy" />
+          <div class="detail-media">
+            <img id="detailImage" alt="" loading="lazy" />
+            <video id="detailVideo" controls hidden></video>
+          </div>
           <div class="detail-layout__meta">
             <h3 id="detailPrompt"></h3>
             <p><strong>Date:</strong> <span id="detailCapturedAt"></span></p>
@@ -150,8 +196,23 @@
               <strong>Tags:</strong>
               <div id="detailTags" class="tags"></div>
             </div>
+            <div class="detail-references" id="detailReferences"></div>
           </div>
         </div>
+      </div>
+    </section>
+
+    <section class="modal" id="referenceModal" hidden>
+      <div class="modal__content modal__content--wide">
+        <header>
+          <h2>Select Reference</h2>
+          <button type="button" class="icon-button" data-close-modal="referenceModal">×</button>
+        </header>
+        <div class="reference-search">
+          <input type="text" id="referenceSearchInput" placeholder="Search media..." />
+          <button type="button" id="referenceSearchButton" class="secondary">Search</button>
+        </div>
+        <ul id="referenceResults" class="reference-results"></ul>
       </div>
     </section>
     <script type="module" src="/main.js"></script>
