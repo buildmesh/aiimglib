@@ -4,8 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>AI Image Gallery</title>
-    <script type="module" crossorigin src="/assets/index-CECCtUo9.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DlHcBxbb.css">
+    <script type="module" crossorigin src="/assets/index-Dm0dzATt.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DzC9WzCw.css">
   </head>
   <body>
     <div id="app" class="app">
@@ -25,8 +25,8 @@
             <p class="tag-filter__hint">Hold Ctrl or ⌘ to select multiple tags.</p>
           </div>
         </details>
-        <input type="number" id="ratingMin" placeholder="Min rating" min="0" max="5" step="0.1" />
-        <input type="number" id="ratingMax" placeholder="Max rating" min="0" max="5" step="0.1" />
+        <input class="rating-input" type="number" id="ratingMin" placeholder="Min" min="0" max="5" step="0.1" />
+        <input class="rating-input" type="number" id="ratingMax" placeholder="Max" min="0" max="5" step="0.1" />
         <input type="date" id="dateFrom" aria-label="Date from" />
         <input type="date" id="dateTo" aria-label="Date to" />
         <select id="mediaTypeFilter" aria-label="Media type filter">
@@ -34,7 +34,7 @@
           <option value="image">Images</option>
           <option value="video">Videos</option>
         </select>
-        <button id="clearFiltersButton" class="ghost" type="button">Clear Filters</button>
+        <button id="clearFiltersButton" class="ghost clear-button" type="button">Clear</button>
       </section>
       <div class="thumbnail-style">
         <label>

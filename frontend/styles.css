@@ -25,7 +25,7 @@ body {
 
 .filters {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 0.75rem;
   margin-bottom: 0.75rem;
   align-items: center;
@@ -40,6 +40,19 @@ body {
   border-radius: 6px;
   font-size: 0.95rem;
   background: #fff;
+}
+
+.filters #mediaTypeFilter {
+  max-width: 130px;
+}
+
+.rating-input {
+  max-width: 90px;
+}
+
+.clear-button {
+  max-width: 80px;
+  justify-self: end;
 }
 
 .thumbnail-style {
