@@ -2,6 +2,7 @@ import "./styles.css";
 import { extractDateFromFilename } from "./dateUtils.js";
 import { ReferencePicker } from "./referencePicker.js";
 import { buildPromptMeta, shouldAutoFillThumbnail, getFirstReferenceAsset } from "./referenceUtils.js";
+import { resetReferenceSearchState } from "./referenceSearchUtils.js";
 import { computeStarFills } from "./ratingUtils.js";
 
 const state = {
@@ -175,11 +176,17 @@ function openReferencePickerModal(target) {
   activeReferenceTarget = target;
   document.getElementById("referenceResults").innerHTML = "";
   document.getElementById("referenceSearchInput").value = "";
-  referenceSearchState.page = 1;
-  referenceSearchState.currentQuery = "";
+  resetReferenceSearchState(referenceSearchState, "");
   updateReferencePagination();
   openModal("referenceModal");
   fetchReferencePage(0);
+}
+
+async function performReferenceSearch() {
+  if (!activeReferenceTarget) return;
+  const query = document.getElementById("referenceSearchInput").value;
+  resetReferenceSearchState(referenceSearchState, query);
+  await fetchReferencePage(0);
 }
 
 async function fetchReferencePage(pageChange = 0) {
