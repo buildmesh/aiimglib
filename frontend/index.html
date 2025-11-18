@@ -32,7 +32,10 @@
           <option value="image">Images</option>
           <option value="video">Videos</option>
         </select>
-        <label class="thumbnail-style">
+        <button id="clearFiltersButton" class="ghost" type="button">Clear Filters</button>
+      </section>
+      <div class="thumbnail-style">
+        <label>
           Thumbnail Style
           <select id="thumbnailStyle">
             <option value="landscape">Landscape</option>
@@ -40,9 +43,7 @@
             <option value="contain">Original Aspect</option>
           </select>
         </label>
-        <button id="refreshButton">Apply Filters</button>
-        <button id="clearFiltersButton" class="ghost" type="button">Clear Filters</button>
-      </section>
+      </div>
       <main id="gallery" class="gallery"></main>
       <p id="resultsSummary" class="results-summary">Showing 0 items</p>
       <div class="pagination">

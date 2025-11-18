@@ -493,7 +493,6 @@ async function openDetailModal(imageId) {
 }
 
 function wireEvents() {
-  document.getElementById("refreshButton").addEventListener("click", () => refreshGallery(true));
   document.getElementById("clearFiltersButton").addEventListener("click", clearFilters);
   document.getElementById("searchInput").addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
@@ -528,6 +527,14 @@ function wireEvents() {
     }
   });
   document.getElementById("tagFilter").addEventListener("change", updateTagSummary);
+  const tagFilterDetails = document.querySelector(".tag-filter");
+  if (tagFilterDetails) {
+    tagFilterDetails.addEventListener("toggle", (event) => {
+      if (!event.target.open) {
+        refreshGallery(true);
+      }
+    });
+  }
   document.getElementById("mediaTypeFilter").addEventListener("change", () => refreshGallery(true));
   const fileInput = document.querySelector('input[name="media_file"]');
   const capturedInput = document.querySelector('input[name="captured_at"]');
@@ -579,6 +586,19 @@ function wireEvents() {
   });
   document.getElementById("referencePrevPage").addEventListener("click", () => fetchReferencePage(-1));
   document.getElementById("referenceNextPage").addEventListener("click", () => fetchReferencePage(1));
+
+  const searchInput = document.getElementById("searchInput");
+  if (searchInput) {
+    searchInput.addEventListener("blur", () => refreshGallery(true));
+  }
+  const ratingMinInput = document.getElementById("ratingMin");
+  const ratingMaxInput = document.getElementById("ratingMax");
+  ratingMinInput.addEventListener("blur", () => refreshGallery(true));
+  ratingMaxInput.addEventListener("blur", () => refreshGallery(true));
+  const dateFromInput = document.getElementById("dateFrom");
+  const dateToInput = document.getElementById("dateTo");
+  dateFromInput.addEventListener("change", () => refreshGallery(true));
+  dateToInput.addEventListener("change", () => refreshGallery(true));
 }
 
 async function bootstrap() {
