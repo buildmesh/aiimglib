@@ -476,7 +476,7 @@ body {
 .reference-result img {
   width: 100%;
   height: 140px;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: 6px;
   background: #0f172a;
 }
@@ -484,6 +484,10 @@ body {
 .reference-result__meta {
   font-size: 0.85rem;
   color: #475467;
+}
+
+.reference-result__meta span {
+  display: block;
 }
 
 .detail-references {
@@ -521,6 +525,11 @@ body {
 .reference-search {
   display: flex;
   gap: 0.5rem;
+}
+
+#referenceModal .modal__content {
+  max-height: 90vh;
+  overflow-y: auto;
 }
 .reference-picker__item pre {
   margin: 0;

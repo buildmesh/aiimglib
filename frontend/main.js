@@ -201,7 +201,12 @@ function renderReferenceResults(items) {
     li.appendChild(thumb);
     const meta = document.createElement("div");
     meta.className = "reference-result__meta";
-    meta.textContent = item.prompt_text;
+    const name = document.createElement("span");
+    name.textContent = item.file_name;
+    meta.appendChild(name);
+    const date = document.createElement("span");
+    date.textContent = formatCaptureDate(item.captured_at);
+    meta.appendChild(date);
     li.appendChild(meta);
     const action = document.createElement("button");
     action.type = "button";
