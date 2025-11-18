@@ -1,5 +1,5 @@
 import "./styles.css";
-import { extractDateFromFilename } from "./dateUtils.js";
+import { extractDateFromFilename, formatDisplayDate } from "./dateUtils.js";
 import { ReferencePicker } from "./referencePicker.js";
 import { buildPromptMeta, shouldAutoFillThumbnail, getFirstReferenceAsset } from "./referenceUtils.js";
 import { resetReferenceSearchState } from "./referenceSearchUtils.js";
@@ -26,21 +26,10 @@ const referencePickers = {};
 const forms = {};
 const THUMBNAIL_STYLE_KEY = "aiimglib:thumbnailStyle";
 const DEFAULT_THUMBNAIL_STYLE = "landscape";
-const resultsFormatter = new Intl.DateTimeFormat(undefined, {
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-});
+const REFERENCE_PAGE_SIZE = 8;
 
 if (typeof window !== "undefined") {
   state.thumbnailStyle = localStorage.getItem(THUMBNAIL_STYLE_KEY) || DEFAULT_THUMBNAIL_STYLE;
-}
-
-function formatCaptureDate(value) {
-  if (!value) return "Date unknown";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Date unknown";
-  return resultsFormatter.format(date);
 }
 
 async function fetchJSON(url) {
@@ -194,10 +183,10 @@ async function fetchReferencePage(pageChange = 0) {
   referenceSearchState.page = Math.max(1, referenceSearchState.page + pageChange);
   const params = new URLSearchParams();
   if (referenceSearchState.currentQuery) params.set("q", referenceSearchState.currentQuery);
-  params.set("page_size", "12");
+  params.set("page_size", String(REFERENCE_PAGE_SIZE));
   params.set("page", String(referenceSearchState.page));
   const { items, total } = await fetchJSON(`/api/images?${params.toString()}`);
-  referenceSearchState.totalPages = Math.max(1, Math.ceil(total / 12));
+  referenceSearchState.totalPages = Math.max(1, Math.ceil(total / REFERENCE_PAGE_SIZE));
   renderReferenceResults(items);
   updateReferencePagination();
 }
@@ -224,7 +213,7 @@ function renderReferenceResults(items) {
     name.textContent = item.file_name;
     meta.appendChild(name);
     const date = document.createElement("span");
-    date.textContent = formatCaptureDate(item.captured_at);
+    date.textContent = formatDisplayDate(item.captured_at);
     meta.appendChild(date);
     li.appendChild(meta);
     const action = document.createElement("button");
@@ -318,8 +307,8 @@ function renderCards(items) {
 
     const ratingEl = fragment.querySelector("[data-rating]");
     renderStars(ratingEl, item.rating);
-    const dateEl = fragment.querySelector("[data-date]");
-    dateEl.textContent = formatCaptureDate(item.captured_at);
+  const dateEl = fragment.querySelector("[data-date]");
+  dateEl.textContent = formatDisplayDate(item.captured_at);
 
     fragment.querySelector("[data-model]").textContent = item.ai_model
       ? `Model: ${item.ai_model}`
@@ -712,6 +701,7 @@ async function resolveReferences(promptMeta) {
       thumbnail_file: detail.thumbnail_file,
       file_name: detail.file_name,
       media_type: detail.media_type,
+      captured_at: detail.captured_at,
     });
   }
   return resolved;

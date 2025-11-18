@@ -38,3 +38,16 @@ export function extractDateFromFilename(filename = "") {
   }
   return formatDateForInput(date);
 }
+
+const displayFormatter = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+
+export function formatDisplayDate(value) {
+  if (!value) return "Date unknown";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "Date unknown";
+  return displayFormatter.format(date);
+}

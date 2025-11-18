@@ -1,3 +1,5 @@
+import { formatDisplayDate } from "./dateUtils.js";
+
 export class ReferencePicker {
   constructor({ listElement, onChange }) {
     this.listElement = listElement;
@@ -39,9 +41,13 @@ export class ReferencePicker {
       li.appendChild(thumb);
 
       const info = document.createElement("div");
-      info.innerHTML = `<strong>${ref.prompt_text || "Untitled"}</strong><div class="reference-picker__meta">${
-        ref.media_type || "image"
-      }</div>`;
+      info.className = "reference-picker__info";
+      const name = document.createElement("span");
+      name.textContent = ref.file_name || "Unknown file";
+      info.appendChild(name);
+      const date = document.createElement("span");
+      date.textContent = formatDisplayDate(ref.captured_at);
+      info.appendChild(date);
       li.appendChild(info);
 
       const removeBtn = document.createElement("button");
