@@ -193,3 +193,23 @@ def delete_image(session: Session, image_id: str) -> None:
     session.delete(image)
     session.commit()
     files.delete_media_files(file_name, thumbnail_name)
+
+
+def list_dependents(session: Session, image_id: str) -> list[models.Image]:
+    """Return images whose prompt references include the given image."""
+    dependents: list[models.Image] = []
+    stmt = select(models.Image)
+    for candidate in session.exec(stmt):
+        if _references_image(candidate.prompt_meta, image_id):
+            dependents.append(candidate)
+    return dependents
+
+
+def _references_image(prompt_meta, target_id: str) -> bool:
+    if not isinstance(prompt_meta, list):
+        return False
+    candidates = prompt_meta[:-1]
+    for entry in candidates:
+        if isinstance(entry, dict) and entry.get("id") == target_id:
+            return True
+    return False

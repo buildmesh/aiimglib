@@ -156,3 +156,23 @@ def test_detail_endpoint_returns_prompt_meta_and_thumbnail(api_client):
     payload = response.json()
     assert payload["prompt_meta"] == [{"id": "seed"}, "Prompt meta detail"]
     assert payload["thumbnail_file"] is None
+
+
+def test_detail_endpoint_includes_dependents(api_client):
+    parent = upload_media(api_client, prompt_text="Parent image")
+    child = upload_media(
+        api_client,
+        prompt_text="Child referencing parent",
+        prompt_meta=[{"id": parent["id"]}, "Child referencing parent"],
+    )
+
+    response = api_client.get(f"/api/images/{parent['id']}")
+
+    assert response.status_code == 200
+    payload = response.json()
+    dependents = payload.get("dependents", [])
+    assert len(dependents) == 1
+    dependent = dependents[0]
+    assert dependent["id"] == child["id"]
+    assert dependent["file_name"] == child["file_name"]
+    assert dependent["media_type"] == "image"

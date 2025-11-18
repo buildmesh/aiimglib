@@ -20,6 +20,15 @@ class TagUsage(BaseModel):
     count: int
 
 
+class ImageDependent(BaseModel):
+    id: str
+    prompt_text: str
+    file_name: str
+    thumbnail_file: Optional[str] = None
+    media_type: MediaType
+    captured_at: Optional[datetime] = None
+
+
 class ImageBase(BaseModel):
     file_name: str
     media_type: MediaType = MediaType.IMAGE
@@ -69,3 +78,7 @@ class ImageRead(ImageBase):
 class ImageListResponse(BaseModel):
     items: List[ImageRead]
     total: int
+
+
+class ImageDetail(ImageRead):
+    dependents: List[ImageDependent] = Field(default_factory=list)

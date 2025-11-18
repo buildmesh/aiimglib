@@ -488,7 +488,8 @@ async function openDetailModal(imageId) {
   const tagContainer = document.getElementById("detailTags");
   renderTags(tagContainer, detail.tags);
   const references = await resolveReferences(detail.prompt_meta);
-  renderDetailReferences(references);
+  renderDetailReferenceList("detailReferences", references);
+  renderDetailReferenceList("detailDependents", detail.dependents ?? []);
   openModal("detailModal");
 }
 
@@ -675,8 +676,8 @@ function renderDetailMedia(detail) {
   }
 }
 
-function renderDetailReferences(references) {
-  const container = document.getElementById("detailReferences");
+function renderDetailReferenceList(containerId, references) {
+  const container = document.getElementById(containerId);
   container.innerHTML = "";
   if (!references.length) {
     container.textContent = "None";

@@ -132,13 +132,27 @@ def list_images(
     )
 
 
-@router.get("/{image_id}", response_model=schemas.ImageRead)
+@router.get("/{image_id}", response_model=schemas.ImageDetail)
 def retrieve_image(
     image_id: str,
     session: Session = Depends(db_session),
-) -> schemas.ImageRead:
+) -> schemas.ImageDetail:
     image = crud.get_image(session, image_id)
-    return _image_to_schema(image)
+    dependents = crud.list_dependents(session, image_id)
+    base_data = _image_to_schema(image).model_dump()
+    dependents_payload = [
+        schemas.ImageDependent(
+            id=dep.id,
+            prompt_text=dep.prompt_text,
+            file_name=dep.file_name,
+            thumbnail_file=dep.thumbnail_file,
+            media_type=dep.media_type,
+            captured_at=dep.captured_at,
+        )
+        for dep in dependents
+    ]
+    base_data["dependents"] = dependents_payload
+    return schemas.ImageDetail.model_validate(base_data)
 
 
 @router.post("/", response_model=schemas.ImageRead, status_code=status.HTTP_201_CREATED)
