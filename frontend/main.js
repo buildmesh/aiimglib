@@ -2,6 +2,7 @@ import "./styles.css";
 import { extractDateFromFilename } from "./dateUtils.js";
 import { ReferencePicker } from "./referencePicker.js";
 import { buildPromptMeta, shouldAutoFillThumbnail, getFirstReferenceAsset } from "./referenceUtils.js";
+import { computeStarFills } from "./ratingUtils.js";
 
 const state = {
   items: [],
@@ -9,6 +10,7 @@ const state = {
   pageSize: 20,
   total: 0,
   detailCache: new Map(),
+  thumbnailStyle: "landscape",
 };
 
 const PROMPT_PREVIEW_LIMIT = 160;
@@ -16,6 +18,24 @@ let capturedAtDirty = false;
 let activeReferenceTarget = null;
 const referencePickers = {};
 const forms = {};
+const THUMBNAIL_STYLE_KEY = "aiimglib:thumbnailStyle";
+const DEFAULT_THUMBNAIL_STYLE = "landscape";
+const resultsFormatter = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+
+if (typeof window !== "undefined") {
+  state.thumbnailStyle = localStorage.getItem(THUMBNAIL_STYLE_KEY) || DEFAULT_THUMBNAIL_STYLE;
+}
+
+function formatCaptureDate(value) {
+  if (!value) return "Date unknown";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Date unknown";
+  return resultsFormatter.format(date);
+}
 
 async function fetchJSON(url) {
   const response = await fetch(url);
@@ -40,6 +60,33 @@ function renderTags(container, tags) {
     span.textContent = tag.name;
     container.appendChild(span);
   });
+}
+
+function renderStars(container, rating) {
+  container.innerHTML = "";
+  const isNumber = typeof rating === "number";
+  const fills = computeStarFills(isNumber ? rating : 0);
+  fills.forEach((percent, index) => {
+    const star = document.createElement("span");
+    star.className = "star";
+    const base = document.createElement("span");
+    base.className = "star__base";
+    base.textContent = "★";
+    const fill = document.createElement("span");
+    fill.className = "star__fill";
+    fill.textContent = "★";
+    fill.style.width = `${percent}%`;
+    star.appendChild(base);
+    star.appendChild(fill);
+    container.appendChild(star);
+  });
+  if (!isNumber) {
+    const label = document.createElement("span");
+    label.className = "star__label";
+    label.textContent = "Unrated";
+    container.appendChild(label);
+  }
+  container.setAttribute("aria-label", isNumber ? `${rating} out of 5 stars` : "Unrated");
 }
 
 function openModal(id) {
@@ -220,11 +267,28 @@ function updateThumbnailVisibility() {
   if (!uploadState?.thumbnailField) return;
   const isVideo = uploadState.mediaTypeSelect.value === "video";
   uploadState.thumbnailField.hidden = !isVideo;
+  if (!isVideo && uploadState.thumbnailInput) {
+    uploadState.thumbnailInput.value = "";
+    uploadState.thumbnailDirty = false;
+  }
+}
+
+function applyThumbnailStyle() {
+  const gallery = document.getElementById("gallery");
+  if (gallery) {
+    gallery.dataset.thumbStyle = state.thumbnailStyle;
+  }
+  const select = document.getElementById("thumbnailStyle");
+  if (select) {
+    select.value = state.thumbnailStyle;
+  }
+  localStorage.setItem(THUMBNAIL_STYLE_KEY, state.thumbnailStyle);
 }
 
 function renderCards(items) {
   state.items = items;
   const gallery = document.getElementById("gallery");
+  gallery.dataset.thumbStyle = state.thumbnailStyle;
   gallery.innerHTML = "";
   const template = document.getElementById("image-card-template");
 
@@ -241,6 +305,11 @@ function renderCards(items) {
     const promptEl = fragment.querySelector("[data-prompt]");
     promptEl.textContent = truncatePrompt(item.prompt_text);
     promptEl.title = item.prompt_text;
+
+    const ratingEl = fragment.querySelector("[data-rating]");
+    renderStars(ratingEl, item.rating);
+    const dateEl = fragment.querySelector("[data-date]");
+    dateEl.textContent = formatCaptureDate(item.captured_at);
 
     fragment.querySelector("[data-model]").textContent = item.ai_model
       ? `Model: ${item.ai_model}`
@@ -287,6 +356,7 @@ async function refreshGallery(resetPage = false) {
   state.total = total;
   renderCards(items);
   renderPagination();
+  updateResultsSummary();
 }
 
 async function populateTags() {
@@ -337,6 +407,7 @@ async function handleUpload(event) {
     referencePickers.upload.setReferences([]);
     forms.upload.mediaTypeSelect.value = "image";
     updateThumbnailVisibility();
+    syncPromptMeta("upload");
     closeModal("uploadModal");
     await populateTags();
     await refreshGallery(true);
@@ -488,6 +559,9 @@ function wireEvents() {
   if (forms.upload.promptInput) {
     forms.upload.promptInput.addEventListener("input", () => syncPromptMeta("upload"));
   }
+  if (forms.edit.promptInput) {
+    forms.edit.promptInput.addEventListener("input", () => syncPromptMeta("edit"));
+  }
   document.querySelectorAll("[data-add-reference]").forEach((button) => {
     button.addEventListener("click", (event) => {
       openReferencePickerModal(event.currentTarget.dataset.addReference);
@@ -506,6 +580,14 @@ async function bootstrap() {
   initializeForms();
   initializeReferencePickers();
   updateThumbnailVisibility();
+  applyThumbnailStyle();
+  const styleSelect = document.getElementById("thumbnailStyle");
+  if (styleSelect) {
+    styleSelect.addEventListener("change", (event) => {
+      state.thumbnailStyle = event.target.value;
+      applyThumbnailStyle();
+    });
+  }
   wireEvents();
   await populateTags();
   await refreshGallery();
@@ -528,6 +610,8 @@ function clearFilters() {
     option.selected = false;
   });
   updateTagSummary();
+  state.thumbnailStyle = DEFAULT_THUMBNAIL_STYLE;
+  applyThumbnailStyle();
   refreshGallery(true);
 }
 
@@ -541,6 +625,13 @@ function setupTagFilterCollapse() {
       tagFilter.removeAttribute("open");
     }
   });
+}
+
+function updateResultsSummary() {
+  const summary = document.getElementById("resultsSummary");
+  if (!summary) return;
+  const noun = state.total === 1 ? "item" : "items";
+  summary.textContent = `Showing ${state.total} ${noun}`;
 }
 function renderDetailMedia(detail) {
   const imageEl = document.getElementById("detailImage");
@@ -563,7 +654,7 @@ function renderDetailReferences(references) {
   const container = document.getElementById("detailReferences");
   container.innerHTML = "";
   if (!references.length) {
-    container.textContent = "No references";
+    container.textContent = "None";
     return;
   }
   references.forEach((ref) => {

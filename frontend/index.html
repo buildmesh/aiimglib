@@ -32,10 +32,19 @@
           <option value="image">Images</option>
           <option value="video">Videos</option>
         </select>
+        <label class="thumbnail-style">
+          Thumbnail Style
+          <select id="thumbnailStyle">
+            <option value="landscape">Landscape</option>
+            <option value="portrait">Portrait</option>
+            <option value="contain">Original Aspect</option>
+          </select>
+        </label>
         <button id="refreshButton">Apply Filters</button>
         <button id="clearFiltersButton" class="ghost" type="button">Clear Filters</button>
       </section>
       <main id="gallery" class="gallery"></main>
+      <p id="resultsSummary" class="results-summary">Showing 0 items</p>
       <div class="pagination">
         <button id="prevPage" class="secondary" type="button">Previous</button>
         <span id="pageIndicator">Page 1</span>
@@ -53,6 +62,10 @@
             <div class="card__actions">
               <button type="button" class="secondary" data-edit-button>Edit</button>
             </div>
+            </div>
+            <div class="card__meta">
+              <div class="card__rating" data-rating></div>
+              <div class="card__date" data-date></div>
             </div>
             <p class="card__model" data-model></p>
             <div data-tags class="tags"></div>
@@ -196,7 +209,10 @@
               <strong>Tags:</strong>
               <div id="detailTags" class="tags"></div>
             </div>
-            <div class="detail-references" id="detailReferences"></div>
+            <div>
+              <strong>References:</strong>
+              <div class="detail-references" id="detailReferences"></div>
+            </div>
           </div>
         </div>
       </div>
