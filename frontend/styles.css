@@ -531,6 +531,14 @@ body {
   max-height: 90vh;
   overflow-y: auto;
 }
+
+.reference-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
 .reference-picker__item pre {
   margin: 0;
   font-family: inherit;

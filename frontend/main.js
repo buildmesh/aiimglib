@@ -16,6 +16,11 @@ const state = {
 const PROMPT_PREVIEW_LIMIT = 160;
 let capturedAtDirty = false;
 let activeReferenceTarget = null;
+const referenceSearchState = {
+  page: 1,
+  totalPages: 1,
+  currentQuery: "",
+};
 const referencePickers = {};
 const forms = {};
 const THUMBNAIL_STYLE_KEY = "aiimglib:thumbnailStyle";
@@ -170,17 +175,24 @@ function openReferencePickerModal(target) {
   activeReferenceTarget = target;
   document.getElementById("referenceResults").innerHTML = "";
   document.getElementById("referenceSearchInput").value = "";
+  referenceSearchState.page = 1;
+  referenceSearchState.currentQuery = "";
+  updateReferencePagination();
   openModal("referenceModal");
+  fetchReferencePage(0);
 }
 
-async function performReferenceSearch() {
+async function fetchReferencePage(pageChange = 0) {
   if (!activeReferenceTarget) return;
-  const query = document.getElementById("referenceSearchInput").value.trim();
+  referenceSearchState.page = Math.max(1, referenceSearchState.page + pageChange);
   const params = new URLSearchParams();
-  if (query) params.set("q", query);
+  if (referenceSearchState.currentQuery) params.set("q", referenceSearchState.currentQuery);
   params.set("page_size", "12");
-  const { items } = await fetchJSON(`/api/images?${params.toString()}`);
+  params.set("page", String(referenceSearchState.page));
+  const { items, total } = await fetchJSON(`/api/images?${params.toString()}`);
+  referenceSearchState.totalPages = Math.max(1, Math.ceil(total / 12));
   renderReferenceResults(items);
+  updateReferencePagination();
 }
 
 function renderReferenceResults(items) {
@@ -240,8 +252,8 @@ function initializeForms() {
     promptInput: document.getElementById("editPrompt"),
     promptMetaInput: document.getElementById("editPromptMeta"),
     mediaTypeSelect: document.getElementById("editMediaType"),
-    thumbnailInput: null,
-    thumbnailField: null,
+    thumbnailInput: document.querySelector('[data-thumbnail-field="edit"] input[name="thumbnail_file"]'),
+    thumbnailField: document.querySelector('[data-thumbnail-field="edit"]'),
     thumbnailDirty: false,
   };
 }
@@ -567,6 +579,8 @@ function wireEvents() {
       performReferenceSearch();
     }
   });
+  document.getElementById("referencePrevPage").addEventListener("click", () => fetchReferencePage(-1));
+  document.getElementById("referenceNextPage").addEventListener("click", () => fetchReferencePage(1));
 }
 
 async function bootstrap() {
@@ -694,4 +708,13 @@ async function resolveReferences(promptMeta) {
     });
   }
   return resolved;
+}
+function updateReferencePagination() {
+  const prev = document.getElementById("referencePrevPage");
+  const next = document.getElementById("referenceNextPage");
+  const indicator = document.getElementById("referencePageIndicator");
+  if (!prev || !next || !indicator) return;
+  prev.disabled = referenceSearchState.page <= 1;
+  next.disabled = referenceSearchState.page >= referenceSearchState.totalPages;
+  indicator.textContent = `Page ${referenceSearchState.page} of ${referenceSearchState.totalPages}`;
 }

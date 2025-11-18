@@ -150,6 +150,10 @@
               <option value="video">Video</option>
             </select>
           </label>
+          <label class="thumbnail-field" data-thumbnail-field="edit">
+            Thumbnail File
+            <input type="file" name="thumbnail_file" accept="image/*" />
+          </label>
           <label>
             Prompt
             <textarea id="editPrompt" required></textarea>
@@ -229,6 +233,11 @@
           <button type="button" id="referenceSearchButton" class="secondary">Search</button>
         </div>
         <ul id="referenceResults" class="reference-results"></ul>
+        <div class="reference-pagination">
+          <button type="button" id="referencePrevPage" class="secondary">Previous</button>
+          <span id="referencePageIndicator">Page 1</span>
+          <button type="button" id="referenceNextPage" class="secondary">Next</button>
+        </div>
       </div>
     </section>
     <script type="module" src="/main.js"></script>
