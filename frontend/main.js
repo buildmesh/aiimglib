@@ -300,7 +300,7 @@ function renderCards(items) {
   items.forEach((item) => {
     const fragment = template.content.cloneNode(true);
     const imageEl = fragment.querySelector("[data-image]");
-    const thumb = item.thumbnail_file || item.file_name;
+    const thumb = item.media_type === "video" ? (item.thumbnail_file || item.file_name) : item.file_name;
     imageEl.src = `/images/${thumb}`;
     imageEl.alt = item.prompt_text;
     imageEl.addEventListener("click", () => openDetailModal(item.id));
