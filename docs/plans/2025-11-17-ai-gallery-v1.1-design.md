@@ -41,8 +41,10 @@ All endpoints share standard FastAPI error handling; validation errors return 42
 
 ## 5. Frontend Experience
 - Entry page shows header (search inputs + "Add Media" button) and responsive gallery grid. Cards display either `<img>` thumbnails or `<video>` overlays depending on `media_type`.
-- Search controls: free-text input, collapsible tag picker, decimal rating filters (`step=0.1`), date range picker, optional media-type filter. “Clear filters” resets all inputs.
+- Search controls: free-text input, collapsible tag picker, decimal rating filters (`step=0.1`), date range picker, optional media-type filter, and a gallery-wide “Thumbnail Style” selector (“Landscape” default, “Portrait”, “Original aspect”). The selected style applies instantly to every card and is stored client-side so reloads keep the preference. “Clear filters” resets all inputs (style resets to default).
+- Filter summary shows the total number of matching items (“Showing 42 items”) in a subtle caption near the filters/pagination so users always know how many assets match the current criteria.
 - Tiles now open a richer detail modal: inline HTML5 video playback for `media_type=video`, image zoom for images, metadata, rating, and list of referenced sources. Source references display thumbnails; clicking them navigates to that record’s detail modal.
+- Cards themselves display: thumbnail styled per the selected mode, a “Video” badge when relevant, prompt snippet, ai_model, tags, captured date (friendly format), and a 5-star rating visualization (partial stars supported with yellow fill).
 - Upload modal lets users choose media type (image/video), upload `media_file`, optionally `thumbnail_file` (videos require one). Prompt editor includes a “Add reference” gallery picker so users can search/select existing assets; the thumbnail field auto-prefills with the first referenced asset but remains editable. Rating input uses a decimal-capable control.
 - Edit modal mirrors upload modal (including reference picker and decimal rating).
 - Pagination/infinite scroll fetches additional pages via `GET /api/images?page=n` to avoid loading everything at once.

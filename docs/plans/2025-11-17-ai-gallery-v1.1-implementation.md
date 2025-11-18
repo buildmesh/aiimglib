@@ -71,9 +71,11 @@
 3. **Detail modal**: embed `<video>` for videos, show reference thumbnails with click-to-navigate behavior, display captured date, decimal rating, and notes.  
 4. **Gallery & filters**: show video indicators, decimal ratings, collapsible tag picker with summary, clear-filters button, and optional media-type filter.  
 5. **Reference navigation**: clicking a reference thumbnail opens that record’s detail modal (fetch via `/api/images/{id}`).  
-6. Run Vitest, rebuild bundle (`npm run build`), ensure `app/static/` is updated.  
-7. Update backend smoke test to assert new UI text (e.g., “Add Media” or references).  
-8. Commit frontend + built assets.
+6. **Thumbnail style selector**: implement radio buttons or select (“Landscape” default, “Portrait”, “Original aspect”). Styles adjust card thumbnail containers appropriately (landscape crops to 4:3, portrait to 3:4, original uses object-fit: contain). Persist preference in `localStorage`.  
+7. **Gallery counters & date/rating UI**: show “Showing N items” near filters/pagination, render captured dates on cards (friendly short format), and draw 5-star rating widgets supporting partial fill (SVG/CSS).  
+8. Run Vitest, rebuild bundle (`npm run build`), ensure `app/static/` is updated.  
+9. Update backend smoke test to assert new UI text (e.g., “Add Media”, items count).  
+10. Commit frontend + built assets.
 
 ### Task 6: Documentation & Final Verification
 
