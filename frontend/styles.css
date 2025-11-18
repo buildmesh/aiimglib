@@ -316,6 +316,7 @@ body {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
   gap: 1rem;
+  align-items: start;
 }
 
 .detail-media {
@@ -325,10 +326,12 @@ body {
   align-items: center;
   justify-content: center;
   min-height: 280px;
+  max-height: 75vh;
 }
 
 .detail-media img,
 .detail-media video {
+  max-height: 75vh;
   width: 100%;
   border-radius: 12px;
   object-fit: contain;
@@ -337,6 +340,29 @@ body {
 
 .detail-layout__meta h3 {
   margin-top: 0;
+}
+
+.detail-layout__meta {
+  max-height: 75vh;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.detail-prompt {
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 0.5rem;
+  max-height: 10rem;
+  overflow-y: auto;
+  font-size: 0.95rem;
 }
 
 .modal__content footer {

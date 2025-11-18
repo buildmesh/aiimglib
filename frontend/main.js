@@ -462,7 +462,7 @@ async function openDetailModal(imageId) {
   renderDetailMedia(detail);
   const promptEl = document.getElementById("detailPrompt");
   const promptText = detail.prompt_text || "None";
-  promptEl.innerHTML = promptText.replace(/\n/g, "<br>");
+  promptEl.textContent = promptText;
   document.getElementById("detailCapturedAt").textContent = detail.captured_at
     ? new Date(detail.captured_at).toUTCString()
     : "Unknown";
