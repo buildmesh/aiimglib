@@ -43,11 +43,11 @@ body {
 }
 
 .filters #mediaTypeFilter {
-  max-width: 130px;
+  max-width: 110px;
 }
 
 .rating-input {
-  max-width: 90px;
+  max-width: 50px;
 }
 
 .clear-button {
