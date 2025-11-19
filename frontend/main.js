@@ -698,7 +698,9 @@ function renderDetailReferenceList(containerId, references) {
     card.className = "detail-reference";
     card.addEventListener("click", () => openDetailModal(ref.id));
     const img = document.createElement("img");
-    img.src = ref.thumbnail_file ? `/images/${ref.thumbnail_file}` : `/images/${ref.file_name}`;
+    const thumbSrc =
+      ref.media_type === "video" ? ref.thumbnail_file || ref.file_name : ref.file_name;
+    img.src = `/images/${thumbSrc}`;
     img.alt = ref.prompt_text || "Reference";
     card.appendChild(img);
     const label = document.createElement("span");
