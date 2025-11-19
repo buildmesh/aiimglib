@@ -395,6 +395,16 @@ async function handleUpload(event) {
   const tags = serializeTagsInput(formData.get("tags") || "");
   formData.set("tags", JSON.stringify(tags));
   formData.set("prompt_meta", forms.upload.promptMetaInput.value || "");
+  const mediaType = formData.get("media_type") || "image";
+  const thumbnailInput = forms.upload.thumbnailInput;
+  const hasThumbnail = Boolean(thumbnailInput?.files?.length);
+  if (mediaType === "video" && !hasThumbnail) {
+    alert("Video uploads require a thumbnail image.");
+    return;
+  }
+  if (mediaType === "image" && !hasThumbnail) {
+    formData.delete("thumbnail_file");
+  }
 
   try {
     const response = await fetch("/api/images", {
