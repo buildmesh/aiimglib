@@ -210,7 +210,9 @@ function renderReferenceResults(items) {
     const li = document.createElement("li");
     li.className = "reference-result";
     const thumb = document.createElement("img");
-    thumb.src = `/images/${item.thumbnail_file || item.file_name}`;
+    const thumbSrc =
+      item.media_type === "video" ? item.thumbnail_file || item.file_name : item.file_name;
+    thumb.src = `/images/${thumbSrc}`;
     thumb.alt = item.prompt_text;
     li.appendChild(thumb);
     const meta = document.createElement("div");

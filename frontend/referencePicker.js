@@ -36,7 +36,9 @@ export class ReferencePicker {
       li.classList.add("reference-picker__item");
       const thumb = document.createElement("img");
       thumb.className = "reference-picker__thumb";
-      thumb.src = ref.thumbnail_file ? `/images/${ref.thumbnail_file}` : `/images/${ref.file_name}`;
+      const thumbSrc =
+        ref.media_type === "video" ? ref.thumbnail_file || ref.file_name : ref.file_name;
+      thumb.src = `/images/${thumbSrc}`;
       thumb.alt = ref.prompt_text || "Reference";
       li.appendChild(thumb);
 
