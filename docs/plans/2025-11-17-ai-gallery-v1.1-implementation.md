@@ -2,6 +2,8 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
+**Update (2026-02-01):** Forking this project into a simplified photo gallery base. New planning lives in `docs/plans/2026-02-01-photo-gallery-base-design.md` and `docs/plans/2026-02-01-photo-gallery-base-implementation.md`. Do not implement new work for the AI gallery v1.1 scope unless explicitly requested.
+
 **Goal:** Extend the AI Image Library with video uploads + thumbnails, decimal ratings, structured prompt references, and enhanced UX (detail modal navigation + reference picker).
 
 **Architecture:** FastAPI service + SQLite metadata (SQLModel) with binaries on disk under `images/`. Frontend remains a Vite-built SPA. Schema now includes `media_type`, `thumbnail_file`, decimal ratings, and validated prompt arrays.
